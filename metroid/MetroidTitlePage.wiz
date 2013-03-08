@@ -5035,7 +5035,7 @@ def _009C:
     //($9A39)Starts at beginning after game completed.
     word: restart
     //($C45C)Rts.
-    word: exitsub
+    word: exit_sub
 
 def loadendgfx:
 

@@ -1640,7 +1640,7 @@ def _000D:
     //($C27C)
     call choose_routine
 
-    word: game_engine_page_C45C
+    word: exit_sub
     word: tourian_page_8B9D
     word: tourian_page_8BD5
     word: tourian_page_8C01

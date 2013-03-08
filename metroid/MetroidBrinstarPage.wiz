@@ -1645,7 +1645,7 @@ def _000D:
     [pageindex] = x
     a = [objaction:x]
     call choose_routine
-        word: game_engine_page_C45C
+        word: exit_sub
         word: brinstar_page_8B9D
         word: brinstar_page_8BD5
         word: brinstar_page_8C01

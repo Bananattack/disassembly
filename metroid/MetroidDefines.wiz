@@ -364,11 +364,6 @@
     let abstatus = 0xF0
 //                $F7
 
-    //If bit 3 is set, PPU set to horizontal mirroring-->
-    let mirrorcntrl = 0xFA
-                    //else if bit 3 is clear, PPU is set to vertical-->
-                    //mirroring. No other bits seem to matter.
-
     package scroll do
         // 0 = Up, 1 = Down, 2 = Left, 3 = Right.
         let dir = 0x49
@@ -380,6 +375,10 @@
     end
 
     package video do
+        // If bit 3 is set, PPU set to horizontal mirroring.
+        // If bit 3 is clear, PPU is set to vertical mirroring.
+        // No other bits seem to matter.
+        let mirror = 0xFA
         // Value to be written to [nes.ppu.mask].
         let mask = 0xFE
         // Value to be written to [nes.ppu.ctrl].

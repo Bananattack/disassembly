@@ -62,7 +62,7 @@ end
 
 //------------------------------------------[ Startup ]----------------------------------------------
 
-def startup:
+def startup: do
     a = 0x00
     //Clear MMC1 registers.
     unroll 5 do
@@ -160,8 +160,8 @@ def startup:
     [video.mask] = 0b00000010 via a
 
     //Prepare to set PPU to vertical mirroring.
-    [mirrorcntrl] = 0x47 via a
-    call prepvertmirror
+    [video.mirror] = 0x47 via a
+    call prepare_vertical_mirror
 
     //PCM volume = 0 - disables DMC channel
     [nes.apu.dmc.load] = 0x0 via a
@@ -183,33 +183,31 @@ def startup:
     call check_bank_switch
 
     //Branch always
-    goto waitnmiend when ~zero
+    goto await_redraw when ~zero
 
-//-----------------------------------------[ Main loop ]----------------------------------------------
+    //The main loop runs all the routines that take place outside of the NMI.
+    def main_loop:
+        //($C4DE)Check to see if memory page needs to be switched.
+        call check_bank_switch
+        //($C266)Update Timers 1, 2 and 3.
+        call update_timer
+        //($C114)Go to main routine for updating game.
+        call update_main
+        // Increment frame counter.
+        [framecount]++
+        // Request redraw.
+        [video.redraw_pending] = 0x00 via a
+        // Wait for redraw to be acknowledged.
+    def await_redraw:
+        loop
+            y = a
+            a = [video.redraw_pending]
+            break when ~zero
+        end
 
-//The main loop runs all the routines that take place outside of the NMI.
-
-def main_loop:
-    //($C4DE)Check to see if memory page needs to be switched.
-    call check_bank_switch
-    //($C266)Update Timers 1, 2 and 3.
-    call update_timer
-    //($C114)Go to main routine for updating game.
-    call update_main
-    // Increment frame counter.
-    [framecount]++
-    // Request redraw.
-    [video.redraw_pending] = 0x00 via a
-    // Wait for redraw to be acknowledged.
-def waitnmiend:
-    loop
-        y = a
-        a = [video.redraw_pending]
-        break when ~zero
-    end
-
-    call randomize
-goto main_loop
+        call randomize
+    goto main_loop
+end
 
 //-------------------------------------[ Non-Maskable Interrupt ]-------------------------------------
 
@@ -385,12 +383,12 @@ func clear_nametable do
     y = 0x0
     a = [fill]
     loop
-        [nes.ppu.data] = a
-        y--
-        continue when ~zero
+        loop
+            [nes.ppu.data] = a
+            y--
+        until zero end
         x--
-        until zero
-    end
+    until zero end
 end
 
 //The following table is used by the above routine for finding
@@ -1210,27 +1208,24 @@ def screenon:
 
 //Update the actual PPU control registers.
 
-def writeppuctrl:
-
+def writeppuctrl: do
     a = [video.ctrl]
     [nes.ppu.ctrl] = a
-    //Update PPU control registers.
+    // Update PPU control registers.
     a = [video.mask]
     [nes.ppu.mask] = a
-    a = [mirrorcntrl]
-    //($C4D9)Setup vertical or horizontal mirroring.
-    call prepppumirror
+    // Setup vertical or horizontal mirroring.
+    a = [video.mirror]
+    call prepare_ppu_mirror
+    // fallthrough
+end
 
-def exitsub:
-
-def game_engine_page_C45C:
-    //Exit subroutines.
+// Exit subroutines.
+def exit_sub:
     return
 
 //Turn off both screen and NMI.
-
 def screennmioff:
-
     a = [video.mask]
     //BG & SPR visibility = off
     a = a & 0xe7
@@ -1327,48 +1322,33 @@ def settimer:
 
 //-----------------------------------[ PPU mirroring routines ]---------------------------------------
 
-def prepvertmirror:
-
+def prepare_vertical_mirror: do
     nop
-    //Prepare to set PPU for vertical mirroring (again).
     nop
+    //Prepare to set PPU for vertical mirroring.
     a = 0x47
+    // fallthrough
+end
 
-def setppumirror:
-
-    a = a >> 1
-    //Move bit 3 to bit 0 position.
-    a = a >> 1
-    a = a >> 1
-    //Remove all other bits.
-    a = a & 0x1
+func update_ppu_mirror do
+    //Move bit 3 to bit 0 position, and remove all other bits.
     //Store at address $00.
-    [0x0] = a
-    a = [mmcreg0cntrl]
-    //Load MMCReg0Cntrl and remove bit 0.
-    a = a & 0xfe
-    //Replace bit 0 with stored bit at $00.
-    a = a | [0x0]
-    [mmcreg0cntrl] = a
+    [0x0] = a >> 3 & 0x1 via a
+    //Load MMCReg0Cntrl and replace bit 0 with stored bit at [0x00].
+    [mmcreg0cntrl] = [mmcreg0cntrl] & 0xfe | [0x0] via a
+    //Load new configuration data serially into MMC1Reg0.
+    unroll 4 do
+        [nes.mmc1.ctrl] = a
+        a = a >> 1
+    end
     [nes.mmc1.ctrl] = a
-    a = a >> 1
-    [nes.mmc1.ctrl] = a
-    a = a >> 1
-    [nes.mmc1.ctrl] = a
-    //Load new configuration data serially-->
-    a = a >> 1
-    //into MMC1Reg0.
-    [nes.mmc1.ctrl] = a
-    a = a >> 1
-    [nes.mmc1.ctrl] = a
-    return
+end
 
-def prepppumirror:
-
-    //Load MirrorCntrl into A.
-    a = [mirrorcntrl]
-    //($C4B6)Set mirroring through MMC1 chip.
-    goto setppumirror
+def prepare_ppu_mirror: do
+    a = [video.mirror]
+    // Set mirroring through MMC1 chip.
+    goto update_ppu_mirror
+end
 
 //-----------------------------[ Switch bank and init bank routines ]---------------------------------
 
@@ -1427,7 +1407,7 @@ def init_bank:
     goto [0xa]
 
 def init_bank_table:
-    word: initbank0, initbank1, initbank2, initbank3, initbank4, initbank5, exitsub, exitsub, exitsub
+    word: initbank0, initbank1, initbank2, initbank3, initbank4, initbank5, exit_sub, exit_sub, exit_sub
 
 //Title screen memory page.
 
@@ -2237,7 +2217,7 @@ def samusinit:
     //to down. and set PPU for horizontal mirroring.
     y = 0x2f
 def _0045:
-    [mirrorcntrl] = y
+    [video.mirror] = y
     [maxmissilepickup] = y
     [maxenergypickup] = y
     //Samus' initial vertical position
@@ -3208,7 +3188,7 @@ def _0067:
     //Select routine below.
     call choose_routine
         //($C45C)Rts.
-        word: exitsub
+        word: exit_sub
         //($CC98)Samus is running.
         word: setsamusrun
         //($CFC3)Samus is jumping.
@@ -4239,19 +4219,19 @@ def _00A6:
         word: game_engine_page_CF55
         word: game_engine_page_CC98
         //($C45C)rts
-        word: exitsub
+        word: exit_sub
         word: game_engine_page_D0B5
         //($C45C)rts
-        word: exitsub
+        word: exit_sub
         //($C45C)rts
-        word: exitsub
+        word: exit_sub
         word: game_engine_page_CFBE
         //($C45C)rts
-        word: exitsub
+        word: exit_sub
         //($C45C)rts
-        word: exitsub
+        word: exit_sub
         //($C45C)rts
-        word: exitsub
+        word: exit_sub
 
 // Table used by above subroutine
 def table07:
@@ -4743,7 +4723,7 @@ def dooneprojectile:
     a = [objaction:x]
     call choose_routine
         //($C45C) rts
-        word: exitsub
+        word: exit_sub
         //regular beam
         word: updatebullet
         //wave beam
@@ -5253,7 +5233,7 @@ def updateelevator:
     a = [objaction:x]
     call choose_routine
         //($C45C) rts
-        word: exitsub
+        word: exit_sub
         word: elevatoridle
         word: game_engine_page_D80E
         word: elevatormove
@@ -5307,9 +5287,9 @@ def showelevator:
 def game_engine_page_D80E:
     a = [scroll.x]
     goto _00E5 when ~zero
-    a = [mirrorcntrl]
+    a = [video.mirror]
     a = a | 0x8
-    [mirrorcntrl] = a
+    [video.mirror] = a
     a = [scroll.dir]
     a = a & 0x1
     [scroll.dir] = a
@@ -5517,7 +5497,7 @@ def elevatorstop:
     [0x30f:x] = a
     goto _00F4 when negative
     call togglescroll
-    [mirrorcntrl] = a
+    [video.mirror] = a
 def _00F4:
     goto showelevator
 def _00F5:
@@ -7470,7 +7450,7 @@ def _0152:
     call togglescroll
 def _0153:
     //Store new mirror control data.
-    [mirrorcntrl] = a
+    [video.mirror] = a
     //DoorStatus=5. Done with door scrolling.
     [doorstatus] = x
 
@@ -7501,7 +7481,7 @@ def togglescroll:
     a = a ^ 0x3
     [scroll.dir] = a
     //Toggle mirroring.
-    a = [mirrorcntrl]
+    a = [video.mirror]
     a = a ^ 0x8
     return
 
@@ -9175,11 +9155,11 @@ def attribtablewrite:
     [roomnumber]++
     call choose_routine
         //($C45C)Rts.
-        word: exitsub
+        word: exit_sub
         //($E5E2)Write first row of PPU attrib data.
         word: writeppuattribtbl
         //($C45C)Rts.
-        word: exitsub
+        word: exit_sub
         //($E5E2)Write second row of PPU attrib data.
         word: writeppuattribtbl
         //($EA26)Finished writing attribute table data.
@@ -9403,17 +9383,17 @@ def enemyloop:
     //Jump to proper enemy/door handling routine.
     call choose_routine
         //($C45C)Rts.
-        word: exitsub
+        word: exit_sub
         //($EB06)Room enemies.
         word: loadenemy
         //($EB8C)Room doors.
         word: loaddoor
         //($C45C)Rts.
-        word: exitsub
+        word: exit_sub
         //($EC04)Elevator.
         word: loadelevator
         //($C45C)Rts.
-        word: exitsub
+        word: exit_sub
         //($EC2F)Kraid & Ridley statues.
         word: loadstatues
         //($EC57)Regenerating enemies(such as Zeb).
@@ -10056,7 +10036,7 @@ def choosehandlerroutine:
     //($C27C)Load proper handling routine from table below.
     call choose_routine
         //($C45C)rts.
-        word: exitsub
+        word: exit_sub
         //($EDF8)Some squeepts.
         word: squeepthandler
         //($EDFE)power-ups.
@@ -11220,7 +11200,7 @@ def _022C:
     goto _022D when carry
     call choose_routine
         //($C45C) rts
-        word: exitsub
+        word: exit_sub
         word: game_engine_page_F3BE
         word: game_engine_page_F3E6
         word: 0xf40d
@@ -12092,12 +12072,12 @@ def _026D:
     goto exit19 when zero
     call choose_routine
         //($C45C) rts
-        word: exitsub
+        word: exit_sub
         word: game_engine_page_F96A
         //spit dragon's fireball
         word: game_engine_page_F991
         //($C45C) rts
-        word: exitsub
+        word: exit_sub
         word: game_engine_page_FA6B
         word: game_engine_page_FA91
 
@@ -12577,7 +12557,7 @@ def game_engine_page_FC98:
     a = [0xb0:x]
     call choose_routine
         //($C45C) rts
-        word: exitsub
+        word: exit_sub
         word: game_engine_page_FCA5
         word: game_engine_page_FCB1
         word: game_engine_page_FCBA
@@ -12850,7 +12830,7 @@ def doonetile:
     goto _02A3 when zero
     call choose_routine
         //($C45C) rts
-        word: exitsub
+        word: exit_sub
         word: game_engine_page_FE3D
         word: game_engine_page_FE54
         word: game_engine_page_FE59

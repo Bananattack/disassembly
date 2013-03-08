@@ -1645,7 +1645,7 @@ def _000D:
     //($C27C)
     call choose_routine
 
-    word: game_engine_page_C45C
+    word: exit_sub
     word: ridley_page_8B9D
     word: ridley_page_8BD5
     word: ridley_page_8C01
