@@ -53,69 +53,68 @@ def _0000:
 def _0001:
     //($C27C)Jump to proper routine below.
     call choose_routine
-
-    //($8071)First routine after reset.
-    word: initializeafterreset
-    //($80D0)Draws ground on intro screen.
-    word: drawintrobackground
-    //($80F9)Sets up METROID fade in delay.
-    word: fadeindelay
-    //($812C)Fade METROID onto screen.
-    word: metroidfadein
-    //($8142)Load timer for METROID flash.
-    word: loadflashtimer
-    //($8109)Makes METROID flash.
-    word: flasheffect
-    //($814D)Top and bottom "sparkles" on METROID.
-    word: metroidsparkle
-    //($8163)Fades METROID off the screen.
-    word: metroidfadeout
-    //($8182)Displays "crosshairs" effect on screen.
-    word: crosshairs
-    //($81D1)Continue "crosshairs" effect.
-    word: morecrosshairs
-    //($806E)Increment TitleRoutine.
-    word: inctitleroutine
-    //($806E)Increment TitleRoutine.
-    word: inctitleroutine
-    //($822E)Change from name table 0 to name table 1.
-    word: changeintronametable
-    //($8243)Fade in intro sequence message.
-    word: messagefadein
-    //($8263)Fade out intro sequence message.
-    word: messagefadeout
-    //($8283)Set Delay time before intro sequence restarts.
-    word: delayintroreplay
-    //($8068)clears some memory addresses not used by game.
-    word: clearsparemem
-    //($82A3)Prepare to restart intro routines.
-    word: prepintrorestart
-    //($82ED)Turn screen off.
-    word: titlescreenoff
-    //($82F3)Rts.
-    word: titleroutinereturn
-    //($82F3)Rts.
-    word: titleroutinereturn
-    //($90BA)Displays START/Continue screen.
-    word: startcontinuescreen
-    //($90D7)player chooses between START and CONTINUE.
-    word: choosestartcontinue
-    //($911A)Loads password entry screen.
-    word: loadpasswordscreen
-    //($9147)User enters password.
-    word: enterpassword
-    //($9359)After game over, display password on screen.
-    word: displaypassword
-    //($9394)Wait for START when showing password.
-    word: waitforstart
-    //($90BA)Displays START/Continue screen.
-    word: startcontinuescreen
-    //($939E)Displays "GAME OVER".
-    word: gameover
-    //($9AA7)Show ending of the game.
-    word: endgame
-    //($C4AA)Set delay timer.
-    word: settimer
+        //($8071)First routine after reset.
+        word: initializeafterreset
+        //($80D0)Draws ground on intro screen.
+        word: drawintrobackground
+        //($80F9)Sets up METROID fade in delay.
+        word: fadeindelay
+        //($812C)Fade METROID onto screen.
+        word: metroidfadein
+        //($8142)Load timer for METROID flash.
+        word: loadflashtimer
+        //($8109)Makes METROID flash.
+        word: flasheffect
+        //($814D)Top and bottom "sparkles" on METROID.
+        word: metroidsparkle
+        //($8163)Fades METROID off the screen.
+        word: metroidfadeout
+        //($8182)Displays "crosshairs" effect on screen.
+        word: crosshairs
+        //($81D1)Continue "crosshairs" effect.
+        word: morecrosshairs
+        //($806E)Increment TitleRoutine.
+        word: inctitleroutine
+        //($806E)Increment TitleRoutine.
+        word: inctitleroutine
+        //($822E)Change from name table 0 to name table 1.
+        word: changeintronametable
+        //($8243)Fade in intro sequence message.
+        word: messagefadein
+        //($8263)Fade out intro sequence message.
+        word: messagefadeout
+        //($8283)Set Delay time before intro sequence restarts.
+        word: delayintroreplay
+        //($8068)clears some memory addresses not used by game.
+        word: clearsparemem
+        //($82A3)Prepare to restart intro routines.
+        word: prepintrorestart
+        //($82ED)Turn screen off.
+        word: titlescreenoff
+        //($82F3)Rts.
+        word: titleroutinereturn
+        //($82F3)Rts.
+        word: titleroutinereturn
+        //($90BA)Displays START/Continue screen.
+        word: startcontinuescreen
+        //($90D7)player chooses between START and CONTINUE.
+        word: choosestartcontinue
+        //($911A)Loads password entry screen.
+        word: loadpasswordscreen
+        //($9147)User enters password.
+        word: enterpassword
+        //($9359)After game over, display password on screen.
+        word: displaypassword
+        //($9394)Wait for START when showing password.
+        word: waitforstart
+        //($90BA)Displays START/Continue screen.
+        word: startcontinuescreen
+        //($939E)Displays "GAME OVER".
+        word: gameover
+        //($9AA7)Show ending of the game.
+        word: endgame
+        //($C4AA)Set delay timer.
+        word: settimer
 
 //----------------------------------------[ Intro routines ]------------------------------------------
 
@@ -4562,38 +4561,34 @@ def _008F:
 
 //This function decrements the y coordinate of the 40 intro star sprites.
 
-def decspriteycoord:
-
+func correct_star_positions do
     a = [titleroutine]
-    compare a to 0x1d
-    //If the end game is playing, branch to exit.
-    goto _0091 when carry
-    a = [spriteloadpending]
-    //If no sprite load is pending, branch to exit.
-    goto _0091 when zero
-    a = [framecount]
-    a = a >> 1
-    //If not on an odd numbered frame, branch to exit.
-    goto _0091 when carry
-    x = 0x9f
-def _0090:
-    //Decrement y coord of the intro star sprites.
-    [introstarsprite00:x]--
-    //Decrement y coord of 40 sprites.
-    [sprite18ram:x]--
-    x--
-    x--
-    //Move to next sprite.
-    x--
-    x--
-    compare x to 0xff
-    //Loop 40 times.
-    goto _0090 when ~zero
-    a = 0x0
-    //Sprite RAM load complete.
-    [spriteloadpending] = a
-def _0091:
-    return
+    // Unless end game is playing,
+    if compare a to 0x1D is < then
+        // If a sprite load is pending,
+        if a = [spriteloadpending] is ~zero then
+            a = [framecount] >> 1
+            // If on an odd numbered frame,
+            if is ~carry then
+                x = 0x9f
+                loop
+                    // Decrement y coord of the intro star sprites.
+                    [introstarsprite00:x]--
+                    // Decrement y coord of 40 sprites.
+                    [sprite18ram:x]--
+                    // Move to next sprite.
+                    unroll 4 do
+                        x--
+                    end
+                    compare x to 0xff
+                // Loop 40 times.
+                until == end
+                // Sprite RAM load complete.
+                [spriteloadpending] = 0 via a
+            end
+        end
+    end
+end
 
 def loadstarsprites:
 

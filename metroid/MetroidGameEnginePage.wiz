@@ -31,7 +31,7 @@ in game_engine_page, 0xC000:
     let arearoutine = 0x95C3
     let enemyhitpointtbl = 0x962B
     let enemyinitdelaytbl = 0x96BB
-    let decspriteycoord = 0x988A
+    let correct_star_positions = 0x988A
     let nmiscreenwrite = 0x9A07
     let update_endgame_palette = 0x9F54
     let specitmstable = 0x9598
@@ -395,7 +395,7 @@ def clear_all_sprites:
     //Exit subroutine if GameMode=Play(#$00)
     goto exit_sprite_func when zero
     //($988A)Find proper y coord of sprites.
-    goto decspriteycoord
+    goto correct_star_positions
 
 def exit_sprite_func:
     //Return used by subroutines above and below.
@@ -423,7 +423,7 @@ def clear_intro_sprites:
     //branch if mode = Play.
     goto exit_sprite_func when zero
     //($988A)Find proper y coord of sprites.
-    goto decspriteycoord
+    goto correct_star_positions
 
 //-------------------------------------[Clear RAM $33 thru $DF]---------------------------------------
 
@@ -550,7 +550,7 @@ def read:
     [joy1.retrigger:x] = a
     // Delay = 32 frames.
     y = 32
-    
+
     // Are same buttons are being pressed this frame as last frame?
     if a = [joy1.status:x]; compare a to [0x0] is == then
         // Decrement delay if same buttons pressed.
