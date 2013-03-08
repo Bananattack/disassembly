@@ -305,7 +305,7 @@ def done:
         gopassword,         //($C9C4)Display password.
         incrementroutine,   //($C155)Just advances to next routine in table.
         samusintro,         //($C9D7)Intro.
-        waittimer           //($C494)Delay.
+        wait_timer           //($C494)Delay.
 
 func incrementroutine do
     //Increment to next routine in above table.
@@ -1177,40 +1177,36 @@ def _0030:
 //before the GAME OVER message is dispayed.  The timer is also set while the item pickup music
 //is playing.
 
-def waittimer:
-
-    //Exit if timer hasn't hit zero yet
+def wait_timer:
+    // Exit if timer hasn't hit zero yet
     a = [timer.time3]
-    goto _0031 when ~zero
-    //Set GameOver as next routine.
+    goto set_main_routine_exit when ~zero
     a = [nextroutine]
-    compare a to 0x4
-    //Set GoPassword as main routine.
-    goto setmainroutine when zero
-    compare a to 0x6
-    goto setmainroutine when zero
-    //($D92C)Assume power up was picked up and GameEngine-->
-    call startmusic
-    //is next routine. Start area music before exiting.
+    // Check if next routine is GameOver.
+    compare a to 0x4; goto set_main_routine when zero
+    // Check if next routine is GoPassword.
+    compare a to 0x6; goto set_main_routine when zero
+    // Otherwise, assume power up was picked up and
+    // GameEngine is next routine. Start area music before exiting.
+    call play_music
     a = [nextroutine]
-
-def setmainroutine:
-
+    // fallthrough
+def set_main_routine:
     //Set next routine to run.
     [mainroutine] = a
-def _0031:
+def set_main_routine_exit:
     return
 
-def settimer:
-
+def set_timer: do
     //Set timer.time3. Frames to wait is value stored in A*10.
     [timer.time3] = a
     //Save routine to jump to after timer.time3 expires.
     [nextroutine] = x
-    //Next routine to run is WaitTimer.
+    //Next routine to run is wait_timer.
     a = 0x9
     //Branch always.
-    goto setmainroutine when ~zero
+    goto set_main_routine when ~zero
+end
 
 //-----------------------------------[ PPU mirroring routines ]---------------------------------------
 
@@ -2171,7 +2167,7 @@ def _0047:
     //GameEngine routine to run after delay expires
     x = 0x3
     //($C4AA)Set delay timer and game engine routine.
-    call settimer
+    call set_timer
 
 def _0048:
     //Check is Samus is dead.
@@ -2195,7 +2191,7 @@ def _0048:
     //GameOver routine to run after delay expires.
     x = 0x4
     //($C4AA)Set delay timer and run game over routine.
-    goto settimer
+    goto set_timer
 
 def _0049:
     //Next routine to run is GameOver.
@@ -2320,7 +2316,7 @@ def samusintro:
     a = sa_begin
     [objaction] = a
     //($D92C)Start main music.
-    call startmusic
+    call play_music
     //($CB73)Select proper Samus palette.
     call selectsamuspal
     a = 0x3
@@ -4422,7 +4418,7 @@ def _00B1:
     goto _00B3 when zero
     push a
     //start music
-    call game_engine_page_D92C
+    call play_music
     a = pop
     goto _00B3 when ~negative
     a = 0x0
@@ -5324,7 +5320,7 @@ def _00F0:
     call waitnmipass_
     call selectsamuspal
     //($LD92C)Start music.
-    call startmusic
+    call play_music
     call screenon
     call copyptrs
     call destroyenemies
@@ -5343,9 +5339,7 @@ def _00F0:
     [timer.time1] = a
     return
 
-def startmusic:
-
-def game_engine_page_D92C:
+func play_music do
     a = [elevatorstatus]
     compare a to 0x6
     goto _00F1 when ~zero
@@ -5367,7 +5361,7 @@ def _00F3:
     a = a | [musicinitflag]
     //Store music flag info.
     [musicinitflag] = a
-    return
+end
 
 def elevatorstop:
 

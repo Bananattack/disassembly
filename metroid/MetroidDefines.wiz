@@ -63,7 +63,7 @@
     let mainroutine = 0x1E
     //Stores title routine number currently running.
     let titleroutine = 0x1F
-    //Stores next routine to jump to after WaitTimer expires.
+    //Stores next routine to jump to after wait_timer expires.
     let nextroutine = 0x20
     //0 thru 7. current memory page in lower memory block.
     let currentbank = 0x23

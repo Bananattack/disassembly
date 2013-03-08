@@ -114,7 +114,7 @@ def _0001:
         //($9AA7)Show ending of the game.
         word: endgame
         //($C4AA)Set delay timer.
-        word: settimer
+        word: set_timer
 
 //----------------------------------------[ Intro routines ]------------------------------------------
 
