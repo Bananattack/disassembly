@@ -240,7 +240,7 @@ def drawintrobackground:
     //Upper address of PPU information.
     y = 0x82
     //($C20E) Writes background of intro screen to name tables.
-    call prepareppuprocess_
+    call prepare_ppu_process
     a = 0x1
     //Prepare to load palette data.
     [video.palette_pending] = a
@@ -3135,7 +3135,7 @@ def startcontinuescreen:
     //High address for PPU write.
     y = 0x99
     //($9449)Clears screen and writes "START CONTINUE".
-    call prepareppuprocess
+    call prepare_ppu_process_
     y = 0x0
     //Set selection sprite at START.
     [startcontinue] = y
@@ -3217,7 +3217,7 @@ def loadpasswordscreen:
     //PASS WORD PLEASE.
     y = 0x99
     //($9449)Load "PASSWORD PLEASE" on screen.
-    call prepareppuprocess
+    call prepare_ppu_process_
     //($C6D6)Loads the font for the password.
     call initgfx7
     //($940B)Write password character to screen.
@@ -3687,7 +3687,7 @@ def displaypassword:
     //High byte of start of PPU data.
     y = 0x93
     //($9449)Clears screen and writes "PASS WORD".
-    call prepareppuprocess
+    call prepare_ppu_process_
     //($C6D6)Loads the font for the password.
     call initgfx7
     //($8C7A)Calculates the password.
@@ -3759,7 +3759,7 @@ def gameover:
     //High byte of start of PPU data.
     y = 0x93
     //($9449)Clears screen and writes "GAME OVER".
-    call prepareppuprocess
+    call prepare_ppu_process_
     //($C6D6)Loads the font for the password.
     call initgfx7
     //($C487)Turn on the nonmaskable interrupt.
@@ -3908,14 +3908,13 @@ def passwordrowstbl:
     byte: 0x22, 0xe4
 
 
-def prepareppuprocess:
-
-    //Lower byte of pointer to PPU string
+def prepare_ppu_process_: do
+    // [0x00] now points to a string at address specified by yx.
     [0x0] = x
-    //Upper byte of pointer to PPU string
     [0x1] = y
-    //($C30C)
-    goto processppustring
+    // Write data string to PPU.
+    goto process_ppu_string
+end
 
 def prepareerasetiles:
 
@@ -4895,7 +4894,7 @@ def nmiscreenwrite:
     a = [endmessagestringtbl0-1:y]
     y = a
     //($C20E)Prepare to write to PPU.
-    call prepareppuprocess_
+    call prepare_ppu_process
 def _0093:
     a = [hideshowendmsg]
     //If not time to erase end message, branch
@@ -4910,7 +4909,7 @@ def _0093:
     a = [endmessagestringtbl1-1:y]
     y = a
     //($C20E)Prepare to write to PPU.
-    goto prepareppuprocess_
+    goto prepare_ppu_process
 
 def exit100:
 
@@ -5060,7 +5059,7 @@ def _009D:
     //the surface of the planet in end of game.
     y = 0xa0
     //($C20E)Prepare to write to PPU.
-    call prepareppuprocess_
+    call prepare_ppu_process
     //($C487)Turn on non-maskable interrupt.
     call nmion
     //Initiate end game music.
@@ -5437,7 +5436,7 @@ def _00B2:
     a = [creditspointertbl+1:y]
     y = a
     //($C20E)Prepare to write to PPU.
-    goto prepareppuprocess_
+    goto prepare_ppu_process
 def _00B3:
     return
  
@@ -5841,7 +5840,7 @@ def _00BB:
     x = [endgamepalpntrtbl-2:y]
     y = a
     //($C20E)Prepare to write data string to PPU.
-    call prepareppuprocess_
+    call prepare_ppu_process
     a = 0x3f
     [nes.ppu.address] = a
     a = 0x0

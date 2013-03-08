@@ -228,7 +228,7 @@ task vblank do
             call nmiscreenwrite
         end
         //($C1E0)Check if palette data pending.
-        call checkpalwrite
+        call check_pal_write
         //($C2CA)check if data needs to be written to PPU.
         call checkppuwrite
         //($C44D)Update $2000 & $2001.
@@ -442,61 +442,53 @@ end
 
 //--------------------------------[ Check and prepare palette write ]---------------------------------
 
-def checkpalwrite:
+def check_pal_write: do
+    // Is title being shown?
+    if a = [gamemode] is ~zero then
+        // Is game at ending sequence?
+        if a = [titleroutine]; compare a to 0x1D is >= then
+            // ($9F54) Write palette data for ending.
+            goto endgamepalwrite
+        end
+    end
 
-    a = [gamemode]
-    //Is game being played? If so, branch to exit.
-    goto _0013 when zero
-    a = [titleroutine]
-    //Is Game at ending sequence? If not, branch
-    compare a to 0x1d
-    goto _0013 when ~carry
-    //($9F54)Write palette data for ending.
-    goto endgamepalwrite
-def _0013:
+    // Is palette data pending? If so, write it.
     y = [video.palette_pending]
-    //Is palette data pending? If so, branch.
-    goto _0015 when ~zero
-    a = [gamemode]
-    //Is game being played? If so, branch to exit.
-    goto _0014 when zero
-    a = [titleroutine]
-    //Is intro playing? If not, branch.
-    compare a to 0x15
-    goto _0014 when carry
-    //($8AC7)Cycles palettes for intro stars twinkle.
-    goto starpalswitch
-def _0014:
-    //Exit when no palette data pending.
+    goto write when ~zero
+
+    // Is title being shown?
+    if a = [gamemode] is ~zero then
+        // Is intro playing?
+        if a = [titleroutine]; compare a to 0x15 is < then
+            // ($8AC7) Cycles palettes for intro stars twinkle.
+            goto starpalswitch
+        end
+    end
+
     return
 
-//Prepare to write palette data to PPU.
-
-def _0015:
-    //Palette # = [video.palette_pending] - 1.
+def write:
+    // Prepare to write palette data to PPU.
+    // Palette # = [video.palette_pending] - 1.
     y--
-    a = y
-    //* 2, each pal data ptr is 2 bytes (16-bit).
-    a = a << 1
-    y = a
-    //X = low byte of PPU data pointer.
+    // Double, each pal data ptr is 2 bytes (16-bit).
+    y = y << 1 via a
+    // x = low byte of PPU data pointer.
+    // y = high byte of PPU data pointer.
     x = [0x9560:y]
-    a = [0x9561:y]
-    //Y = high byte of PPU data pointer.
-    y = a
-    //Clear A.
-    a = 0x0
-    //Reset palette data pending byte.
-    [video.palette_pending] = a
+    y = [0x9561:y] via a
+    // Reset palette data pending byte.
+    [video.palette_pending] = 0x0 via a
+    // fallthrough
+end
 
-def prepareppuprocess_:
-
-    //Lower byte of pointer to PPU string.
+def prepare_ppu_process: do
+    // [0x00] now points to a string at address specified by yx.
     [0x0] = x
-    //Upper byte of pointer to PPU string.
     [0x1] = y
-    //($C30C)Write data string to PPU.
-    goto processppustring
+    // Write data string to PPU.
+    goto process_ppu_string
+end
 
 //----------------------------------------[Read joy pad status ]--------------------------------------
 
@@ -592,28 +584,31 @@ def _0019:
 
 //-------------------------------------------[ Update timer ]-----------------------------------------
 
-//This routine is used for timing - or for waiting around, rather.
-//timer.delay is decremented every frame. When it hits zero, $2A, $2B and $2C are
-//decremented if they aren't already zero. The program can then check
-//these variables (it usually just checks $2C) to determine when it's time
-//to "move on". This is used for the various sequences of the intro screen,
-//when the game is started, when Samus takes a special item, and when GAME
-//OVER is displayed, to mention a few examples.
+// This routine is used for timing - or for waiting around, rather.
+// timer.delay is decremented every frame. When it hits zero,
+// timer.time1 .. timer.time3 are decremented if they aren't already zero.
+//
+// The program can then check these variables (it usually just checks timer.time3)
+// to determine when it's time to "move on". This is used for the various
+// sequences of the intro screen, when the game is started, when Samus takes a
+// special item, and when GAME OVER is displayed, to mention a few examples.
 func update_timer do
-    // Two timers: timer.time2, timer.time1
+    // Update two timers: timer.time2, timer.time1
     x = 0x1
+    // Decrease timer delay.
     [timer.delay]--
     // When timer delay hits 0 (every 10 frames),
     if is negative then
         // Reset the delay.
         [timer.delay] = 0x9 via a
-        // Three timers: timer.time3, timer.time2, timer.time1
+        // Update three timers: timer.time3, timer.time2, timer.time1
         x = 0x2
     end
+
+    // Update the timers.
     loop
-        a = [timer.time1:x]
-        // Only decrease timer if it is nonzero.
-        if is ~zero then
+        // Only decrease this timer if it is nonzero.
+        if a = [timer.time1:x] is ~zero then
             [timer.time1:x]--
         end
         x--
@@ -723,7 +718,7 @@ def checkppuwrite:
     //$0000 = ptr to PPU data string ($07A1).
     [0x1] = a
     //($C30C)write it to PPU.
-    call processppustring
+    call process_ppu_string
     a = 0x0
     //PPU data string has been written so the data-->
     [ppustrindex] = a
@@ -780,7 +775,7 @@ def _001E:
 
 //Write data string at ($00) to PPU.
 
-def processppustring:
+def process_ppu_string:
 
     //Reset PPU address flip/flop.
     x = [nes.ppu.status]
