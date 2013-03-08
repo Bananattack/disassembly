@@ -61,7 +61,7 @@ def norfair_page_8039:
     //($CE92)
     goto subtracthealth
     //($C3FB)
-    goto base10subtract
+    goto bcd_subtract
 
 def norfair_page_8048:
     word: norfair_page_84FD, norfair_page_84A6, norfair_page_844A, norfair_page_844A, norfair_page_84A6, norfair_page_84FD, 0x83f4, 0x83f4
@@ -77,7 +77,7 @@ def norfair_page_8048:
     a = [0x0]
     goto _0001 when ~negative
     //($C3D4)
-    call twoscompliment
+    call negate_sign
     [0x66] = a
 def _0000:
     call 0x83f5
@@ -97,7 +97,7 @@ def _0003:
     a = [0x0]
     goto _0005 when ~negative
     //($C3D4)
-    call twoscompliment
+    call negate_sign
     [0x66] = a
 def _0004:
     call 0x84a7
@@ -286,7 +286,7 @@ def norfair_page_81C7:
     a = 0x1
     call norfair_page_856B
     a = [0x6aff:x]
-    call game_engine_page_C3D4
+    call negate_sign
     [0x6aff:x] = a
 
     call norfair_page_81F6
@@ -315,7 +315,7 @@ def norfair_page_81FC:
     a = 0x4
     call norfair_page_856B
     a = [0x6afe:x]
-    call game_engine_page_C3D4
+    call negate_sign
     [0x6afe:x] = a
 
     call norfair_page_81F6
@@ -490,7 +490,7 @@ def norfair_page_8320:
     a = a & 0x7
     p = pop
     goto norfair_page_833C when zero
-    call game_engine_page_C3D4
+    call negate_sign
 def norfair_page_833C:
     [0x0] = a
     return
@@ -507,11 +507,11 @@ def norfair_page_833F:
     [0x402:x] = a
     goto norfair_page_8376 when ~negative
 def norfair_page_8357:
-    call game_engine_page_C3D4
+    call negate_sign
     y = 0xf2
     goto norfair_page_8376 when ~zero
 def norfair_page_835E:
-    call game_engine_page_C3D4
+    call negate_sign
     carry = 1
     [0x0] = a
     a = [encounter:x]
@@ -2095,7 +2095,7 @@ def areapointers:
     //Area specific routine.
     goto norfair_page_9B9D
 
-def twoscompliment_:
+def negate_sign_:
 
 def norfair_page_95C6:
     a = a ^ 0xff

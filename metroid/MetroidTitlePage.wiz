@@ -1282,7 +1282,7 @@ def nibblesubtract:
     //compliment for subtraction, else exit.
     a = a & 0x7
     //($C3D4)Prepare for subtraction with twos compliment.
-    call twoscompliment
+    call negate_sign
 def _0022:
     return
 

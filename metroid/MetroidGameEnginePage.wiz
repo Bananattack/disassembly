@@ -972,100 +972,79 @@ def separatecontrolbits:
 
 //----------------------------------------[ Math routines ]-------------------------------------------
 
-def twoscompliment:
-
-def game_engine_page_C3D4:
-    a = a ^ 0xff
-    //Generate twos compliment of value stored in A.
-    carry = 0
-    a = a +# 0x1
-    return
+//Generate twos compliment of value stored in A.
+func negate_sign do
+    a = a ^ 0xff + 0x1
+end
 
 //The following two routines add a Binary coded decimal (BCD) number to another BCD number.
 //A base number is stored in $03 and the number in A is added/subtracted from $03.  $01 and $02 
 //contain the lower and upper digits of the value in A respectively.  If an overflow happens after
 //the addition/subtraction, the carry bit is set before the routine returns.
-
-def base10add:
-
-    //($C41D)Separate upper 4 bits and lower 4 bits.
-    call extractnibbles
-    //Add lower nibble to number.
+func bcd_add do
+    // Separate upper 4 bits and lower 4 bits.
+    call extract_nibbles
+    // Add lower nibble to number.
     a = a +# [0x1]
-    compare a to 0xa
-    //If result is greater than 9, add 5 to create-->
-    goto _0027 when ~carry
-    //valid result(skip #$0A thru #$0F).
-    a = a +# 0x5
-def _0027:
-    carry = 0
-    //Add upper nibble to number.
-    a = a +# [0x2]
-    [0x2] = a
-    a = [0x3]
-    //Keep upper 4 bits of HealthLo/HealthHi in A.
-    a = a & 0xf0
-    a = a +# [0x2]
-    goto _0029 when ~carry
-def _0028:
-    //If upper result caused a carry, add #$5F to create-->
+    if compare a to 0x0A is >= then
+        // If result is greater than 9, add 5 to create
+        // valid result (skip #$0A thru #$0F).
+        a = a +# 0x5
+    end
+    // Add upper nibble to number.
+    [0x2] = a + [0x2] via a
+    // Keep upper 4 bits of HealthLo/HealthHi in A.
+    a = [0x3] & 0xF0 +# [0x2]
+    // If we don't have a regular carry, we still need
+    // to check that number is valid in BCD.
+    goto check_valid_bcd when ~carry
+    // fallthrough
+
+def upper_carry:
+    // If upper result caused a carry, add #$5F to create
+    // valid result. Set carry indicating carry to next digit.
     a = a +# 0x5f
-    //valid result. Set carry indicating carry to next digit.
     carry = 1
     return
-def _0029:
-    //If result of upper nibble add is greater than #$90,-->
-    compare a to 0xa0
-    //Branch to add #$5F to create valid result.
-    goto _0028 when carry
-    return
 
-def base10subtract:
+def check_valid_bcd:
+    // If result of upper nibble add is greater than #$90,
+    // branch to add #$5F to create valid result.
+    compare a to 0xA0
+    goto upper_carry when >=
+end
 
-    //($C41D)Separate upper 4 bits and lower 4 bits.
-    call extractnibbles
-    //Subtract lower nibble from number.
-    a = a -# [0x1]
-    [0x1] = a
-    //If result is less than zero, add 10 to create-->
-    goto _002A when carry
-    //valid result.
-    a = a +# 0xa
-    [0x1] = a
-    a = [0x2]
-    //Adjust $02 to account for borrowing.
-    a = a +# 0xf
-    [0x2] = a
-def _002A:
-    //Keep upper 4 bits of HealthLo/HealthHi in A.
-    a = [0x3]
-    a = a & 0xf0
-    carry = 1
-    //If result is greater than zero, branch to finish.
-    a = a -# [0x2]
-    goto _002B when carry
-    //Add 10 to create valid result.
-    a = a +# 0xa0
-    carry = 0
-def _002B:
+func bcd_subtract do
+    // Separate upper 4 bits and lower 4 bits.
+    call extract_nibbles
+    // Subtract lower nibble from number.
+    [0x1] = a -# [0x1] via a
+    // If result is less than zero, add 10 to create valid result.
+    if is < then
+        [0x1] = a +# 0xA via a
+        // Adjust $02 to account for borrow.
+        [0x2] = [0x2] +# 0xF via a
+    end
+    // Keep upper 4 bits of HealthLo/HealthHi in A.
+    a = [0x3] & 0xf0 - [0x2]
+    // If result is less than zero, add 10 to create valid result.
+    if is < then
+        a = a +# 0xa0
+        carry = 0
+    end
     //Combine A and $01 to create final value.
     a = a | [0x1]
-    return
+end
 
-def extractnibbles:
-
+func extract_nibbles do
     push a
     //Lower 4 bits of value to change HealthLo/HealthHi by.
-    a = a & 0xf
-    [0x1] = a
-    a = pop
+    [0x1] = a & 0xf via a
     //Upper 4 bits of value to change HealthLo/HealthHi by.
-    a = a & 0xf0
-    [0x2] = a
-    a = [0x3]
+    [0x2] = pop & 0xf0 via a
     //Keep lower 4 bits of HealthLo/HealthHi in A.
-    a = a & 0xf
-    return
+    a = [0x3] & 0xf
+end
 
 //---------------------------[ NMI and PPU control routines ]--------------------------------
 
@@ -3454,7 +3433,7 @@ def _007E:
     x--
     goto _007F when ~zero
     //($C3D4)
-    call twoscompliment
+    call negate_sign
 def _007F:
     [objhorzspeed] = a
 def _0080:
@@ -3561,7 +3540,7 @@ def _0084:
     a = [healthlochange]
     carry = 1
     //($C3FB)Perform base 10 subtraction.
-    call base10subtract
+    call bcd_subtract
     //Save results.
     [healthlo] = a
 
@@ -3571,7 +3550,7 @@ def _0084:
     //Amount to subtract from HealthHi.
     a = [healthhichange]
     //($C3FB)Perform base 10 subtraction.
-    call base10subtract
+    call bcd_subtract
     //Save Results.
     [healthhi] = a
 
@@ -3609,7 +3588,7 @@ def addhealth:
     a = [healthlochange]
     carry = 0
     //($C3DA)Perform base 10 addition.
-    call base10add
+    call bcd_add
     //Save results.
     [healthlo] = a
 
@@ -3619,7 +3598,7 @@ def addhealth:
     //Amount to add to HealthHi.
     a = [healthhichange]
     //($C3DA)Perform base 10 addition.
-    call base10add
+    call bcd_add
     //Save results.
     [healthhi] = a
 
@@ -3658,7 +3637,7 @@ def _0087:
     goto _0089 when ~zero
 def _0088:
     //($C3D4)
-    call twoscompliment
+    call negate_sign
     [samushorzaccel] = a
 
 def clearhorzmvmntdata:
@@ -4743,7 +4722,7 @@ def _00C9:
     goto _00CA when ~carry
     a = y
     //($C3D4)
-    call twoscompliment
+    call negate_sign
     [objhorzspeed:x] = a
 def _00CA:
     call game_engine_page_D609
@@ -7496,7 +7475,7 @@ def samusmovevertically:
     goto _015D when ~negative
 
     //($C3D4)Get twos compliment of vertical speed.
-    call twoscompliment
+    call negate_sign
     //Is Samus in lava?
     y = [samusinlava]
     //If not, branch,-->
@@ -7614,7 +7593,7 @@ def samusmovehorizontally:
 
 //Samus is moving left.
     //($C3D4)Get twos compliment of horizontal speed.
-    call twoscompliment
+    call negate_sign
     //Is Samus in lava?-->
     y = [samusinlava]
     //If not, branch,-->
@@ -11733,7 +11712,7 @@ def _025C:
     a = a -# [0x0]
     goto _025D when ~negative
     //($C3D4)
-    call twoscompliment
+    call negate_sign
 def _025D:
     a = a >> 1
     a = a >> 1
@@ -12054,7 +12033,7 @@ def _0270:
     goto _0271 when ~carry
     a = y
     //($C3D4)
-    call twoscompliment
+    call negate_sign
     [0x403:x] = a
 def _0271:
     p = pop
@@ -12314,7 +12293,7 @@ def game_engine_page_FB88:
 def _0283:
     goto _0284 when ~negative
     //($C3D4)
-    call twoscompliment
+    call negate_sign
 def _0284:
     compare a to 0x8
     goto _0285 when ~carry
@@ -12543,7 +12522,7 @@ def game_engine_page_FD08:
     goto _0293 when ~negative
     y++
     //($C3D4)
-    call twoscompliment
+    call negate_sign
 def _0293:
     compare a to 0x10
     goto _0294 when carry
@@ -12577,7 +12556,7 @@ def game_engine_page_FD25:
     compare y to 0x20
     goto _0295 when ~carry
     //($C3D4)
-    call twoscompliment
+    call negate_sign
     compare y to 0x80
     goto _0296 when ~carry
 def _0295:

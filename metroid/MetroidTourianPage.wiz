@@ -57,7 +57,7 @@ def tourian_page_8042:
     goto subtracthealth
 def tourian_page_8045:
     //($C3FB)
-    goto base10subtract
+    goto bcd_subtract
 
     word: tourian_page_84FD, tourian_page_84A6, tourian_page_844A, tourian_page_844A, tourian_page_84A6, tourian_page_84FD, 0x83f4, 0x83f4
 
@@ -72,7 +72,7 @@ def tourian_page_8045:
     a = [0x0]
     goto _0001 when ~negative
     //($C3D4)
-    call twoscompliment
+    call negate_sign
     [0x66] = a
 def _0000:
     call 0x83f5
@@ -92,7 +92,7 @@ def _0003:
     a = [0x0]
     goto _0005 when ~negative
     //($C3D4)
-    call twoscompliment
+    call negate_sign
     [0x66] = a
 def _0004:
     call 0x84a7
@@ -281,7 +281,7 @@ def tourian_page_81C7:
     a = 0x1
     call tourian_page_856B
     a = [0x6aff:x]
-    call game_engine_page_C3D4
+    call negate_sign
     [0x6aff:x] = a
 
     call tourian_page_81F6
@@ -310,7 +310,7 @@ def tourian_page_81FC:
     a = 0x4
     call tourian_page_856B
     a = [0x6afe:x]
-    call game_engine_page_C3D4
+    call negate_sign
     [0x6afe:x] = a
 
     call tourian_page_81F6
@@ -485,7 +485,7 @@ def tourian_page_8320:
     a = a & 0x7
     p = pop
     goto tourian_page_833C when zero
-    call game_engine_page_C3D4
+    call negate_sign
 def tourian_page_833C:
     [0x0] = a
     return
@@ -502,11 +502,11 @@ def tourian_page_833F:
     [0x402:x] = a
     goto tourian_page_8376 when ~negative
 def tourian_page_8357:
-    call game_engine_page_C3D4
+    call negate_sign
     y = 0xf2
     goto tourian_page_8376 when ~zero
 def tourian_page_835E:
-    call game_engine_page_C3D4
+    call negate_sign
     carry = 1
     [0x0] = a
     a = [encounter:x]
@@ -2099,7 +2099,7 @@ def arearoutine:
     //Area specific routine.
     goto tourian_page_9B25
 
-def twoscompliment_:
+def negate_sign_:
 
 def tourian_page_95C6:
     a = a ^ 0xff
