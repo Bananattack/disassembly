@@ -26,30 +26,37 @@
 
 //The bits of the change and status addresses represent the following joypad buttons:
 //bit 7=A, bit 6=B, bit 5=SELECT, bit 4=START, bit 3=Up, bit 2=Down, bit 1=Left, bit 0=Right.
+    package joy1 do
+        // Any button changes that happened since last frame.
+        let delta = 0x12
+        // Which buttons are currently pressed.
+        let status = 0x14
+        // Buttons that need to be retriggered after being held down by player.
+        let retrigger = 0x16
+        // Controls the retriggering of buttons being held.
+        let delay = 0x18
+    end
 
-    //These addresses store any button changes-->
-    let joy1change = 0x12
-    //that happened since last frame(pads 1 and 2).
-    let joy2change = 0x13
-    //These two addresses store all buttons-->
-    let joy1status = 0x14
-    //currently being pressed on the two controllers.
-    let joy2status = 0x15
-    //These two addresses store any buttons that need-->
-    let joy1retrig = 0x16
-    //to retrigger after being held down by player.
-    let joy2retrig = 0x17
-    //These two addresses are counters that control-->
-    let retrigdelay1 = 0x18
-    //The retriggering of held down buttons.
-    let retrigdelay2 = 0x19
+    package joy2 do
+        // Any button changes that happened since last frame.
+        let delta = 0x13
+        // Which buttons are currently pressed.
+        let status = 0x15
+        // Buttons that need to be retriggered after being held down by player.
+        let retrigger = 0x17
+        // Controls the retriggering of buttons being held.
+        let delay = 0x19
+    end
 
-    //0=NMI in progress. anything else, NMI not in progress.
-    let nmistatus = 0x1A
-    //1=not PPU data pending, 1=data pending.
-    let ppudatapending = 0x1B
-    //Pending palette data. Palette # = PalDataPending - 1.
-    let paldatapending = 0x1C
+    package video do
+        // 0 = redraw in progress. nonzero = redraw complete.
+        let redraw_pending = 0x1A
+        //1=not PPU data pending, 1=data pending.
+        let ppu_pending = 0x1B
+        //Pending palette data. Palette # = [video.palette_pending] - 1.
+        let palette_pending = 0x1C
+    end
+
     //0 = Game is playing, 1 = At title/password screen
     let gamemode = 0x1D
     //5 = Game paused, 3 = Game engine running
@@ -141,12 +148,6 @@
     //Low byte of start of EnemyAnimIndexTbl.
     let enemyanimptr = 0x47
 //      EnemyAnimPtr+1        $48    //High byte of start of EnemyAnimIndexTbl.
-
-    //0=Up, 1=Down, 2=Left, 3=Right.
-    let scrolldir = 0x49
-
-    //Stores ScrollDir when room is initially loaded.
-    let tempscrolldir = 0x4A
 
     //Index to object data.
     let pageindex = 0x4B
@@ -368,14 +369,22 @@
                     //else if bit 3 is clear, PPU is set to vertical-->
                     //mirroring. No other bits seem to matter.
 
-    //Y value loaded into scroll register.
-    let scrolly = 0xFC
-    //X value loaded into scroll register.
-    let scrollx = 0xFD
-    //Data byte to be loaded into PPU control register 1.
-    let ppucnt1zp = 0xFE
-    //Data byte to be loaded into PPU control register 0.
-    let ppucnt0zp = 0xFF
+    package scroll do
+        // 0 = Up, 1 = Down, 2 = Left, 3 = Right.
+        let dir = 0x49
+        // Used to hold direction when room is initially loaded.
+        let temp_dir = 0x4A
+        // x, y values to be written into [nes.ppu.scroll].
+        let y = 0xFC
+        let x = 0xFD
+    end
+
+    package video do
+        // Value to be written to [nes.ppu.mask].
+        let mask = 0xFE
+        // Value to be written to [nes.ppu.ctrl].
+        let ctrl = 0xFF
+    end
 
     //Lower health digit in upper 4 bits.
     let healthlo = 0x0106

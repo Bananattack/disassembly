@@ -44,7 +44,7 @@ def ridley_page_8021:
     goto game_engine_page_F870
 def ridley_page_8024:
     //($C27C)
-    goto chooseroutine
+    goto choose_routine
 def ridley_page_8027:
     goto game_engine_page_FD8F
 def ridley_page_802A:
@@ -1549,14 +1549,14 @@ def samusenterdoor:
     //*2 for energy pickups and set bit 6(128 max, 64 min).
     a = a | 0x40
     [maxenergypickup] = a
-    a = [ppucnt0zp]
+    a = [video.ctrl]
     a = a ^ 0x1
     //Erase name table door data for new room.
     a = a & 0x1
     y = a
     a = a >> 1
     [0x6c:y] = a
-    a = [scrolldir]
+    a = [scroll.dir]
     //Is Samus scrolling horizontally?-->
     a = a & 0x2
     //If so, branch.
@@ -1564,7 +1564,7 @@ def samusenterdoor:
     //Samus currently scrolling vertically.
     x = 0x4
     //Is room centered on screen?-->
-    a = [scrolly]
+    a = [scroll.y]
     //If so, branch.
     goto _000C when zero
     a = [0xff]
@@ -1643,7 +1643,7 @@ def _000D:
     [pageindex] = x
     a = [objaction:x]
     //($C27C)
-    call chooseroutine
+    call choose_routine
 
     word: game_engine_page_C45C
     word: ridley_page_8B9D
@@ -7991,7 +7991,7 @@ def _0064:
 //----------------------------------------[ Interrupt vectors ]--------------------------------------
 
     //($C0D9)NMI vector.
-    word: nmi
+    word: vblank
     //($FFB0)Reset vector.
     word: reset
     //($FFB0)IRQ vector.

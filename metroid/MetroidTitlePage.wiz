@@ -24,7 +24,7 @@ in title_page, 0x8000: do
     //If intro routines not running, branch.
     compare a to 0x15
     goto _0001 when carry
-    a = [joy1change]
+    a = [joy1.delta]
     //if start has not been pressed, branch.
     a = a & 0x10
     goto _0000 when zero
@@ -37,10 +37,10 @@ in title_page, 0x8000: do
     [sparememb7] = y
     //Accessed by unused routine.
     [sparememb8] = y
-    a = [ppucnt0zp]
+    a = [video.ctrl]
     //Set name table to name table 0.
     a = a & 0xfc
-    [ppucnt0zp] = a
+    [video.ctrl] = a
     //If start pressed, load START/CONTINUE screen.
     a = 0x1b
     [titleroutine] = a
@@ -52,7 +52,7 @@ def _0000:
     a = [titleroutine]
 def _0001:
     //($C27C)Jump to proper routine below.
-    call chooseroutine
+    call choose_routine
 
     //($8071)First routine after reset.
     word: initializeafterreset
@@ -243,13 +243,13 @@ def drawintrobackground:
     call prepareppuprocess_
     a = 0x1
     //Prepare to load palette data.
-    [paldatapending] = a
+    [video.palette_pending] = a
     //Not accessed by game.
     [sparememc5] = a
-    a = [ppucnt0zp]
+    a = [video.ctrl]
     //Switch to name table 0
     a = a & 0xfc
-    [ppucnt0zp] = a
+    [video.ctrl] = a
     //Next routine sets up METROID fade in delay.
     [titleroutine]++
     a = 0x0
@@ -260,10 +260,10 @@ def drawintrobackground:
 
 def fadeindelay:
 
-    a = [ppucnt0zp]
+    a = [video.ctrl]
     //Switch to name table 0 or 2.
     a = a & 0xfe
-    [ppucnt0zp] = a
+    [video.ctrl] = a
     //Loads Timer3 with #$08. Delays Fade in routine.-->
     a = 0x8
     //Delays fade in by 80 frames (1.3 seconds).
@@ -488,13 +488,13 @@ def unusedintroroutine1:
     [sparemembb] = a
     a = 0x4
     [spritepagepos] = a
-    [joy1change] = a
+    [joy1.delta] = a
     //Unused intro routine.
-    [joy1status] = a
-    [joy1retrig] = a
+    [joy1.status] = a
+    [joy1.retrigger] = a
     a = 0x3
     [objaction] = a
-    [scrolldir] = a
+    [scroll.dir] = a
     [titleroutine]++
     return
 
@@ -526,10 +526,10 @@ def _0011:
 
 def changeintronametable:
 
-    a = [ppucnt0zp]
+    a = [video.ctrl]
     //Change to name table 1.
     a = a | 0x1
-    [ppucnt0zp] = a
+    [video.ctrl] = a
     //Next routine to run is MessageFadeIn.
     [titleroutine]++
     a = 0x8
@@ -651,9 +651,9 @@ def _0017:
     y--
     goto _0017 when ~negative
     //Change to name table 0.
-    a = [ppucnt0zp]
+    a = [video.ctrl]
     a = a & 0xfc
-    [ppucnt0zp] = a
+    [video.ctrl] = a
     //Y=0.
     y++
     //Accessed by unused routine.
@@ -667,11 +667,11 @@ def _0017:
     [fadedataindex] = y
     //Not accessed by game.
     [sparememcd] = y
-    [joy1change] = y
+    [joy1.delta] = y
     //Clear addresses that were going to be written to by an-->
-    [joy1status] = y
+    [joy1.status] = y
     //unused intro routine.
-    [joy1retrig] = y
+    [joy1.retrigger] = y
     //Not accessed by game.
     [sparememd7] = y
     //Y=1.
@@ -1802,7 +1802,7 @@ def loadpaldata:
     compare a to 0xff
     goto _002E when zero
     //Prepare to write palette data.
-    [paldatapending] = a
+    [video.palette_pending] = a
     [paldataindex]++
 def _002E:
     return
@@ -1832,7 +1832,7 @@ def flashintroscreen:
     goto _0030 when zero
 def _002F:
     //Store palette change data.
-    [paldatapending] = a
+    [video.palette_pending] = a
     //Increment index into table below.
     [screenflashpalindex]++
 def _0030:
@@ -1927,7 +1927,7 @@ def dofadeout:
     compare a to 0xff
     goto _0033 when zero
     //Store new palette data.
-    [paldatapending] = a
+    [video.palette_pending] = a
     [fadedataindex]++
 def _0033:
     return
@@ -3114,13 +3114,13 @@ def clearall:
     call clear_all_nametables
     call clear_all_sprites
     //Set Name table address to $2000.
-    a = [ppucnt0zp]
+    a = [video.ctrl]
     a = a & 0xfc
-    [ppucnt0zp] = a
+    [video.ctrl] = a
     a = 0x0
     //Reset scroll offsets.
-    [scrolly] = a
-    [scrollx] = a
+    [scroll.y] = a
+    [scroll.x] = a
     //($C42C)Wait for NMI to end.
     call waitnmipass
     //($C47D)Set PPU for horizontal write and turn off VBlank.
@@ -3141,7 +3141,7 @@ def startcontinuescreen:
     [startcontinue] = y
     a = 0xd
     //Change palette and title routine.
-    [paldatapending] = a
+    [video.palette_pending] = a
     //Next routine is ChooseStartContinue.
     a = 0x16
     [titleroutine] = a
@@ -3155,7 +3155,7 @@ def turnondisplay:
 
 def choosestartcontinue:
 
-    a = [joy1change]
+    a = [joy1.delta]
     //Checks both select and start buttons.
     a = a & 0x30
     //Check if START has been pressed.
@@ -3224,7 +3224,7 @@ def loadpasswordscreen:
     call displayinputcharacters
     a = 0x13
     //Change palette.
-    [paldatapending] = a
+    [video.palette_pending] = a
     a = 0x0
     //Sets character select cursor to-->
     [inputrow] = a
@@ -3245,7 +3245,7 @@ def enterpassword:
 
     //($C1A3)Remove sprites from screen.
     call clear_all_sprites
-    a = [joy1change]
+    a = [joy1.delta]
     //Check to see if START has been pressed.
     a = a & 0x10
     //If not, branch.
@@ -3255,7 +3255,7 @@ def enterpassword:
 def _0063:
     x = 0x1
     //Prepare to write the password screen data to PPU.
-    [ppudatapending] = x
+    [video.ppu_pending] = x
     x = [ppustrindex]
     //Upper byte of PPU string.
     a = 0x21
@@ -3294,7 +3294,7 @@ def _0066:
     compare y to 0xf
     goto _0066 when ~zero
     //If button A pressed, branch.
-    a = [joy1change]
+    a = [joy1.delta]
     goto _0067 when negative
     //($91FB)Check if backspace pressed.
     goto checkbackspace
@@ -3387,7 +3387,7 @@ def _006C:
 
 def checkbackspace:
 
-    a = [joy1change]
+    a = [joy1.delta]
     //If button B (backspace) has not-->
     a = a & 0x40
     //been pressed, branch.
@@ -3443,7 +3443,7 @@ def _0071:
     x = [inputrow]
     //of current character selected.
     y = [inputcolumn]
-    a = [joy1retrig]
+    a = [joy1.retrigger]
     //If no directional buttons are in-->
     a = a & 0xf
     //retrigger mode, branch.
@@ -3700,7 +3700,7 @@ def displaypassword:
     call waitnmipass
     a = 0x13
     //Change palette.
-    [paldatapending] = a
+    [video.palette_pending] = a
     [titleroutine]++
     //($C447)Turn screen on.
     goto screenon
@@ -3740,7 +3740,7 @@ def displaypassword:
 def waitforstart:
 
     //Waits for START to be ressed proceed-->
-    a = [joy1change]
+    a = [joy1.delta]
     //past the GAME OVER screen.
     a = a & 0x10
     //If start not pressed, branch.
@@ -3948,7 +3948,7 @@ def unusedintroroutine4:
     [ppudatastring:x] = a
     //PPU string and prepares for a PPU write.
     a = 0x1
-    [ppudatapending] = a
+    [video.ppu_pending] = a
     return
 
 def unusedintroroutine5:
@@ -4919,7 +4919,7 @@ def exit100:
  
 def restart:
 
-    a = [joy1status]
+    a = [joy1.status]
     //If start has not been pressed, branch to exit.
     a = a & 0x10
     goto exit100 when zero
@@ -5006,19 +5006,19 @@ def endgame:
     //Changes star palettes every 16th frame.
     a = a & 0xf
     goto _009C when ~zero
-    [paldatapending]++
+    [video.palette_pending]++
     //Reset palette data to #$01 after it-->
-    a = [paldatapending]
+    a = [video.palette_pending]
     //reaches #$09.
     compare a to 0x9
     goto _009C when ~zero
     a = 0x1
-    [paldatapending] = a
+    [video.palette_pending] = a
 def _009C:
     //RoomPtr used in end of game to determine-->
     a = [roomptr]
     //($C27C)which subroutine to run below.
-    call chooseroutine
+    call choose_routine
 
     //($9AD5)Load end GFX to pattern tables.
     word: loadendgfx
@@ -5085,7 +5085,7 @@ def _009D:
     [creditpagenumber] = a
     a = 0x1
     //Change palette.
-    [paldatapending] = a
+    [video.palette_pending] = a
     a = 0x8
     //Initialize ClrChangeCounter with #$08.
     [clrchangecounter] = a
@@ -5207,7 +5207,7 @@ def samuswave:
     //(2.6 seconds).
     a = 0x8
     //Change palette
-    [paldatapending] = a
+    [video.palette_pending] = a
     //Increment RoomPtr
     [roomptr]++
     return
@@ -5266,7 +5266,7 @@ def endfadeout:
     //*This code does not appear to be used.
     a = 0x8
     //*Change palette.
-    [paldatapending] = a
+    [video.palette_pending] = a
     //*Increment IsCredits.
     [iscredits]++
 
@@ -5277,9 +5277,9 @@ def _00A9:
     //If PalDataPending is not equal to #$0C, keep-->
     goto _00AA when ~zero
     //incrementing every seventh frame until it does.-->
-    [paldatapending]++
+    [video.palette_pending]++
     //This creates the fade out effect.
-    a = [paldatapending]
+    a = [video.palette_pending]
     compare a to 0xc
     goto _00AA when ~zero
     //After fadeout complete, load Timer3 with 160 frame-->
@@ -5316,7 +5316,7 @@ def rollcredits:
     call clear_all_sprites
     a = 0xd
     //Change to proper palette for credits.
-    [paldatapending] = a
+    [video.palette_pending] = a
     //($C447)Turn screen on.
     call screenon
     //($C43F)Wait for NMI to end.
@@ -5331,7 +5331,7 @@ def _00AD:
     //If not at last page of credits, branch.
     compare a to 0x6
     goto _00AE when ~zero
-    a = [scrolly]
+    a = [scroll.y]
     //If last page of credits is not finished-->
     compare a to 0x88
     //scrolling, branch.  Else increment to next-->
@@ -5346,9 +5346,9 @@ def _00AE:
     a = a & 0x3
     //Ready to scroll? If not, branch.
     goto _00AF when ~zero
-    [scrolly]++
+    [scroll.y]++
     //Load ScrollY and check it to see if its-->
-    a = [scrolly]
+    a = [scroll.y]
     //position is at the very bottom on name table.-->
     compare a to 0xf0
     //if not, branch.
@@ -5356,12 +5356,12 @@ def _00AE:
     [creditpagenumber]++
     a = 0x0
     //When Scrolly is at bottom of the name table,-->
-    [scrolly] = a
+    [scroll.y] = a
     //Swap to next name table(0 or 2) and increment-->
-    a = [ppucnt0zp]
+    a = [video.ctrl]
     //CreditPageNumber.
     a = a ^ 0x2
-    [ppucnt0zp] = a
+    [video.ctrl] = a
 def _00AF:
     return
 
@@ -5384,7 +5384,7 @@ def loadcredits:
     goto _00B3 when carry
     x = 0x0
     //If ScrollY is less than #$80 (128), branch.
-    a = [scrolly]
+    a = [scroll.y]
     goto _00B0 when ~negative
     //Load X with sign bit (#$01) and remove-->
     x++
@@ -5819,7 +5819,7 @@ def endstardatatable:
 def endgamepalwrite:
 
     //If no palette data pending, branch to exit.
-    a = [paldatapending]
+    a = [video.palette_pending]
     goto _00BC when zero
     //If PalDataPending has loaded last palette,-->
     compare a to 0xc
@@ -5830,7 +5830,7 @@ def endgamepalwrite:
     //start over.
     goto _00BB when ~zero
     y = 0x0
-    [paldatapending] = y
+    [video.palette_pending] = y
 def _00BB:
     //* 2, pointer is two bytes.
     a = a << 1
@@ -12978,7 +12978,7 @@ def _0115:
 //----------------------------------------[ Interrupt vectors ]--------------------------------------
 
     //($C0D9)NMI vector.
-    word: nmi
+    word: vblank
     //($FFB0)Reset vector.
     word: reset
     //($FFB0)IRQ vector.

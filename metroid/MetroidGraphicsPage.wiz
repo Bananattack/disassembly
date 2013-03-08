@@ -1115,7 +1115,7 @@ def _0001:
 //----------------------------------------[ Interrupt vectors ]--------------------------------------
 
     //($C0D9)NMI vector.
-    word: nmi
+    word: vblank
     //($FFB0)Reset vector.
     word: reset
     //($FFB0)IRQ vector.
