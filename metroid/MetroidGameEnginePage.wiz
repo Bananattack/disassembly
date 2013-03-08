@@ -774,19 +774,17 @@ end
 
 // Erase blasted tile on nametable. 
 // Each screen is 16 tiles across and 15 tiles down.
-def erase_tile:
+def erase_tile: do
     y = 0x1
     //data pending = YES.
     [video.ppu_pending] = y
     y--
-    a = [[0x2]:y]
-    a = a & 0xf
     //# of tiles horizontally.
-    [0x5] = a
-    a = [[0x2]:y]
+    [0x5] = [[0x2]:y] & 0xf via a
     //($C2BF)/ 16.
-    call adiv16
     //# of tiles vertically.
+    a = [[0x2]:y]
+    call adiv16
     [0x4] = a
     x = [ppustrindex]
     loop
@@ -797,8 +795,7 @@ def erase_tile:
         //($C36B)write PPU low address to $07A1,PPUStrIndex.
         call write_ppu_byte
         //data length.
-        a = [0x5]
-        [0x6] = a
+        [0x6] = [0x5] via a
         //($C36B)write PPU string length to $07A1,PPUStrIndex.
         call write_ppu_byte
         loop
@@ -822,6 +819,7 @@ def erase_tile:
     until zero end
     //($c376)Finish writing PPU string and exit.
     call end_ppu_string
+end
 
 def write_ppu_byte: do
     //Store data byte at end of PPUDataString.
