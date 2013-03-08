@@ -71,7 +71,7 @@ def startup: do
     unroll 5 do
         [nes.mmc1.chr2] = a
     end
-    
+
     // Swap to PRG bank #0 at $8000
     call write_rom_bank
 
@@ -393,11 +393,11 @@ def clear_all_sprites:
     until zero end
     a = [gamemode]
     //Exit subroutine if GameMode=Play(#$00)
-    goto exit101 when zero
+    goto exit_sprite_func when zero
     //($988A)Find proper y coord of sprites.
     goto decspriteycoord
 
-def exit101:
+def exit_sprite_func:
     //Return used by subroutines above and below.
     return
 
@@ -407,24 +407,21 @@ def exit101:
 //sprites every frame.  It does this by loading the sprite values with #$F4 which moves the 
 //sprite to the bottom right of the screen and uses a blank graphic for the sprite.
 
-def removeintrosprites:
+def clear_intro_sprites:
     //Start at address $200.
-    y = 0x2
-    [0x1] = y
-    y = 0x0
-    //($00) = $0200 (sprite page)
-    [0x0] = y
+    [0x1] = 0x02 via y
+    [0x0] = 0x00 via y
     //Prepare to clear RAM $0200-$025F
     y = 0x5f
     a = 0xf4
-def _0011:
-    [[0x0]:y] = a
-    //Loop unitl $200 thru $25F is filled with #$F4.
-    y--
-    goto _0011 when ~negative
+    loop
+        [[0x0]:y] = a
+        //Loop unitl $200 thru $25F is filled with #$F4.
+        y--
+    until negative end
     a = [gamemode]
     //branch if mode = Play.
-    goto exit101 when zero
+    goto exit_sprite_func when zero
     //($988A)Find proper y coord of sprites.
     goto decspriteycoord
 
@@ -432,18 +429,16 @@ def _0011:
 
 //The routine below clears RAM associated with rooms and enemies.
 
-def clearram_33_df:
-
+func clear_game_engine_ram do
     x = 0x33
     a = 0x0
-def _0012:
-    //Clear RAM addresses $33 through $DF.
-    [0x0:x] = a
-    x++
-    compare x to 0xe0
-    //Loop until all desired addresses are cleared.
-    goto _0012 when ~carry
-    return
+    // Clear RAM addresses $33 through $DF.
+    loop
+        [0x0:x] = a
+        x++
+        compare x to 0xE0
+    until >= end
+end
 
 //--------------------------------[ Check and prepare palette write ]---------------------------------
 
@@ -1423,9 +1418,9 @@ def initbank1:
     //Make sure game is not paused.
     [gamepaused] = a
     //($C1D4)Clear game engine memory addresses.
-    call clearram_33_df
+    call clear_game_engine_ram
     //($C578)Clear Samus' stats memory addresses.
-    call clearsamusstats
+    call clear_samus_ram
 def _0034:
     y = 0x0
     //($C4EF)Load Brinstar memory page into lower 16Kb memory.
@@ -1435,18 +1430,17 @@ def _0034:
     //($C487)Turn on VBlank interrupts.
     goto nmion
 
-def clearsamusstats:
-
-    y = 0xf
+func clear_samus_ram do
     //Clears Samus stats(Health, full tanks, game timer, etc.).
-    a = 0x0
-def _0035:
-    //Load $100 thru $10F with #$00.
-    [0x100:y] = a
-    y--
     //Loop 16 times.
-    goto _0035 when ~negative
-    return
+    y = 0xf
+    a = 0x0
+    loop
+        //Load $100 thru $10F with #$00.
+        [0x100:y] = a
+        y--
+    until negative end
+end
 
 //Norfair memory page.
 

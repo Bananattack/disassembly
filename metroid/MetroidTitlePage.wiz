@@ -48,7 +48,7 @@ in title_page, 0x8000: do
     goto _0001 when ~zero
 def _0000:
     //($C1BC)Remove sparkle and crosshair sprites from screen.
-    call removeintrosprites
+    call clear_intro_sprites
     a = [titleroutine]
 def _0001:
     //($C27C)Jump to proper routine below.
@@ -3572,9 +3572,9 @@ def cursorpostbl:
 def initializegame:
 
     //($C1D4)Clear RAM.
-    call clearram_33_df
+    call clear_game_engine_ram
     //($C578)Reset Samus stats for a new game.
-    call clearsamusstats
+    call clear_samus_ram
     //($8D12)Load data from password.
     call loadpassworddata
     y = 0x0
