@@ -264,10 +264,10 @@ def fadeindelay:
     //Switch to name table 0 or 2.
     a = a & 0xfe
     [video.ctrl] = a
-    //Loads Timer3 with #$08. Delays Fade in routine.-->
+    //Loads timer.time3 with #$08. Delays Fade in routine.-->
     a = 0x8
     //Delays fade in by 80 frames (1.3 seconds).
-    [timer3] = a
+    [timer.time3] = a
     a = a >> 1
     //Loads PalDataIndex with #$04
     [paldataindex] = a
@@ -289,7 +289,7 @@ def flasheffect:
     [paldataindex] = a
     call loadpaldata
     //If Timer 3 has not expired, branch-->
-    a = [timer3]
+    a = [timer.time3]
     //so routine will keep running.
     goto _0005 when ~zero
     a = [paldataindex]
@@ -303,13 +303,13 @@ def flasheffect:
     //Sets Timer 3 for a delay of 240 frames-->
     a = 0x18
     //(4 seconds).
-    [timer3] = a
+    [timer.time3] = a
 def _0005:
     return
 
 def metroidfadein:
 
-    a = [timer3]
+    a = [timer.time3]
     goto _0006 when ~zero
     //Every 16th FrameCount, Change palette.-->
     a = [framecount]
@@ -322,7 +322,7 @@ def metroidfadein:
     //Set timer delay for METROID flash effect.-->
     a = 0x20
     //Delays flash by 320 frames (5.3 seconds).
-    [timer3] = a
+    [timer.time3] = a
     [titleroutine]++
 def _0006:
     return
@@ -330,11 +330,11 @@ def _0006:
 def loadflashtimer:
 
     //If 320 frames have not passed, exit
-    a = [timer3]
+    a = [timer.time3]
     goto _0006 when ~zero
     a = 0x8
-    //Stores a value of 80 frames in Timer3-->
-    [timer3] = a
+    //Stores a value of 80 frames in timer.time3-->
+    [timer.time3] = a
     //(1.3 seconds).
     [titleroutine]++
     return
@@ -342,7 +342,7 @@ def loadflashtimer:
 def metroidsparkle:
 
     //Wait until 3 seconds have passed since-->
-    a = [timer3]
+    a = [timer.time3]
     //last routine before continuing.
     goto _0008 when ~zero
     //Check if sparkle sprites are done moving.
@@ -376,8 +376,8 @@ def metroidfadeout:
     //($8897)Load initial sprite values for crosshair routine.
     call loadinitialspritedata
     a = 0x8
-    //Load Timer3 with a delay of 80 frames(1.3 seconds).
-    [timer3] = a
+    //Load timer.time3 with a delay of 80 frames(1.3 seconds).
+    [timer.time3] = a
     //Set counter for slow sprite movement for 8 frames,
     [first4slowcntr] = a
     a = 0x0
@@ -401,7 +401,7 @@ def crosshairs:
     call flashintroscreen
 def _000B:
     //Wait 80 frames from last routine-->
-    a = [timer3]
+    a = [timer.time3]
     //before running this one.
     goto _000F when ~zero
     a = [introspr0complete]
@@ -514,7 +514,7 @@ def unusedintroroutine2:
     a = 0x7
     [animframe] = a
     a = 0x8
-    [timer3] = a
+    [timer.time3] = a
     a = 0x0
     //Not accessed by game.
     [sparememc9] = a
@@ -533,8 +533,8 @@ def changeintronametable:
     //Next routine to run is MessageFadeIn.
     [titleroutine]++
     a = 0x8
-    //Set Timer3 for 80 frames(1.33 seconds).
-    [timer3] = a
+    //Set timer.time3 for 80 frames(1.33 seconds).
+    [timer.time3] = a
     //Index to FadeInPalData.
     a = 0x6
     [fadedataindex] = a
@@ -546,7 +546,7 @@ def changeintronametable:
 def messagefadein:
 
     //Check if delay timer has expired.  If not, branch-->
-    a = [timer3]
+    a = [timer.time3]
     //to exit, else run this rouine.
     goto _0013 when ~zero
     a = [framecount]
@@ -562,8 +562,8 @@ def messagefadein:
     //Clear FadeDataIndex.
     [fadedataindex] = a
     a = 0x30
-    //Set Timer3 to 480 frames(8 seconds).
-    [timer3] = a
+    //Set timer.time3 to 480 frames(8 seconds).
+    [timer.time3] = a
     //Next routine is MessageFadeOut.
     [titleroutine]++
     //Branch always.
@@ -577,7 +577,7 @@ def _0013:
 def messagefadeout:
 
     //Check if delay timer has expired.  If not, branch-->
-    a = [timer3]
+    a = [timer.time3]
     //to exit, else run this rouine.
     goto _0015 when ~zero
     a = [framecount]
@@ -610,13 +610,13 @@ def delayintroreplay:
     //Increment to next routine.
     [titleroutine]++
     a = 0x10
-    //Set Timer3 for a delay of 160 frames(2.6 seconds).
-    [timer3] = a
+    //Set timer.time3 for a delay of 160 frames(2.6 seconds).
+    [timer.time3] = a
     return
 
 def unusedintroroutine3:
 
-    a = [timer3]
+    a = [timer.time3]
     goto _0016 when ~zero
     a = [sparememb7]
     goto _0016 when ~zero
@@ -627,7 +627,7 @@ def unusedintroroutine3:
     a = 0x1
     [sparememd2] = a
     a = 0x10
-    [timer3] = a
+    [timer.time3] = a
     [titleroutine]++
 def _0016:
     return
@@ -635,7 +635,7 @@ def _0016:
 def prepintrorestart:
 
     //Check if delay timer has expired.  If not, branch-->
-    a = [timer3]
+    a = [timer.time3]
     //to exit, else run this rouine.
     goto _0018 when ~zero
     //Not accessed by game.
@@ -1888,7 +1888,7 @@ def _0032:
     [0x1] = a
     y++
     //($C2B3)Find new data base of palette data.
-    call addytoptr02
+    call add_y_to_ptr_02
     //($C37E)Prepare and write new palette data.
     goto prepppupalettestring
 
@@ -2156,8 +2156,8 @@ def _003D:
     a = a | 0x1
     [multisfxflag] = a
     a = 0xc
-    //Set Timer3 time for 120 frames (2 seconds).
-    [timer3] = a
+    //Set timer.time3 time for 120 frames (2 seconds).
+    [timer.time3] = a
     a = 0x18
     //Run EnterPassword routine.
     [titleroutine] = a
@@ -3230,7 +3230,7 @@ def loadpasswordscreen:
     [inputrow] = a
     //upper left character (0).
     [inputcolumn] = a
-    [timer3] = a
+    [timer.time3] = a
     a = 0x0
     //Sets password cursor to password character 0.
     [passwordcursor] = a
@@ -3269,12 +3269,12 @@ def _0063:
     a = 0xf
     //($C36B)Write byte to PPU.
     call writeppubyte
-    a = [timer3]
+    a = [timer.time3]
     goto _0064 when zero
     a = 0x59
     //Writes 'ERROR TRY AGAIN' on the screen-->
     [0x2] = a
-    //if Timer3 is anything but #$00.
+    //if timer.time3 is anything but #$00.
     a = 0x87
     [0x3] = a
     goto _0065
@@ -3677,7 +3677,7 @@ def initializestats:
 def displaypassword:
 
     //Wait for "GAME OVER" to be displayed-->
-    a = [timer3]
+    a = [timer.time3]
     //for 160 frames (2.6 seconds).
     goto title_page_9324 when ~zero
     //($909F)Turn off screen, erase sprites and nametables.
@@ -3764,10 +3764,10 @@ def gameover:
     call initgfx7
     //($C487)Turn on the nonmaskable interrupt.
     call nmion
-    //Load Timer3 with a delay of 160 frames-->
+    //Load timer.time3 with a delay of 160 frames-->
     a = 0x10
     //(2.6 seconds) for displaying "GAME OVER".
-    [timer3] = a
+    [timer.time3] = a
     //Loads TitleRoutine with -->
     a = 0x19
     //DisplayPassword.
@@ -5066,10 +5066,10 @@ def _009D:
     //Initiate end game music.
     a = 0x20
     [multisfxflag] = a
-    //Loads Timer3 with a delay of 960 frames-->
+    //Loads timer.time3 with a delay of 960 frames-->
     a = 0x60
     //(16 seconds).
-    [timer3] = a
+    [timer.time3] = a
     //#$36/#$03 = #$12.  Number of sprites-->
     a = 0x36
     //used to draw end graphic of Samus.
@@ -5098,7 +5098,7 @@ def showendsamus:
     //($9C9A)Load end image of Samus.
     call loadendsamussprites
     //Once 960 frames (16 seconds) have expired,-->
-    a = [timer3]
+    a = [timer.time3]
     //Move to EndSamusFlash routine.
     goto _009E when ~zero
     [roomptr]++
@@ -5147,10 +5147,10 @@ def endsamusflash:
     [spritebytecounter] = a
 def _00A1:
     compare a to 0x10
-    //Once flashing Samus is compete, set Timer3-->
+    //Once flashing Samus is compete, set timer.time3-->
     goto _00A3 when ~zero
     //for a 160 frame(2.6 seconds) delay.
-    [timer3] = a
+    [timer.time3] = a
     y = 0x0
     a = [endingtype]
     //If one of the suitless Samus endings,-->
@@ -5198,12 +5198,12 @@ def palchangetable:
 def samuswave:
 
     //If 160 frame timer from previous routine-->
-    a = [timer3]
+    a = [timer.time3]
     //has not expired, branch(waves for 2.6 seconds).
     goto _00A5 when ~zero
     a = 0x10
-    //Load Timer3 with 160 frame delay-->
-    [timer3] = a
+    //Load timer.time3 with 160 frame delay-->
+    [timer.time3] = a
     //(2.6 seconds).
     a = 0x8
     //Change palette
@@ -5256,7 +5256,7 @@ def _00A8:
 def endfadeout:
 
     //If 160 frame delay from last routine has not-->
-    a = [timer3]
+    a = [timer.time3]
     //yet expired, branch.
     goto _00AA when ~zero
     a = [iscredits]
@@ -5282,10 +5282,10 @@ def _00A9:
     a = [video.palette_pending]
     compare a to 0xc
     goto _00AA when ~zero
-    //After fadeout complete, load Timer3 with 160 frame-->
+    //After fadeout complete, load timer.time3 with 160 frame-->
     a = 0x10
     //delay(2.6 seconds) and increment RoomPtr.
-    [timer3] = a
+    [timer.time3] = a
     [roomptr]++
 def _00AA:
     a = [endingtype]
@@ -5302,13 +5302,13 @@ def _00AB:
 def rollcredits:
 
     //If 160 frame timer delay from previous-->
-    a = [timer3]
+    a = [timer.time3]
     //routine has expired, branch.
     goto _00AC when zero
-    //If not 20 frames left in Timer3, branch to exit.
+    //If not 20 frames left in timer.time3, branch to exit.
     compare a to 0x2
     goto _00AF when ~zero
-    //($C439)When 20 frames left in Timer3,-->
+    //($C439)When 20 frames left in timer.time3,-->
     call screenoff
     //($C16D)clear name table 0 and sprites.-->
     call clear_nametable_0

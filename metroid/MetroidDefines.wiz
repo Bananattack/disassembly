@@ -75,14 +75,15 @@
     let switchupperbits = 0x28
                     //3 and 4 should always be 0 under normal conditions.
 
-    //Count down from 9 to 0. Decremented every frame.
-    let timerdelay = 0x29
-    //Decremented every frame after set.
-    let timer1 = 0x2A
-    //Decremented every frame after set.
-    let timer2 = 0x2B
-    //Decremented every 10 frames after set.
-    let timer3 = 0x2C
+    package timer do
+        // Repeatedly counts from 9..0. Decremented once every frame.
+        let delay = 0x29
+        // Decremented once every frame when nonzero.
+        let time1 = 0x2A
+        let time2 = 0x2B
+        // Decremented once every 10 frames when nonzero.
+        let time3 = 0x2C
+    end
 
     //Increments every frame(overflows every 256 frames).
     let framecount = 0x2D

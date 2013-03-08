@@ -593,121 +593,98 @@ def _0019:
 //-------------------------------------------[ Update timer ]-----------------------------------------
 
 //This routine is used for timing - or for waiting around, rather.
-//TimerDelay is decremented every frame. When it hits zero, $2A, $2B and $2C are
+//timer.delay is decremented every frame. When it hits zero, $2A, $2B and $2C are
 //decremented if they aren't already zero. The program can then check
 //these variables (it usually just checks $2C) to determine when it's time
 //to "move on". This is used for the various sequences of the intro screen,
 //when the game is started, when Samus takes a special item, and when GAME
 //OVER is displayed, to mention a few examples.
-
-def update_timer:
-
-    //First timer to decrement is Timer2.
+func update_timer do
+    // Two timers: timer.time2, timer.time1
     x = 0x1
-    [timerdelay]--
-    goto dectimer when ~negative
-    //TimerDelay hits #$00 every 10th frame.
-    a = 0x9
-    //Reset TimerDelay after it hits #$00.
-    [timerdelay] = a
-    //Decrement Timer3 every 10 frames.
-    x = 0x2
-
-def dectimer:
-
-    a = [timer1:x]
-    //Don't decrease if timer is already zero.
-    goto _001A when zero
-    [timer1:x]--
-def _001A:
-    //Timer1 and Timer2 decremented every frame.
-    x--
-    goto dectimer when ~negative
-    return
+    [timer.delay]--
+    // When timer delay hits 0 (every 10 frames),
+    if is negative then
+        // Reset the delay.
+        [timer.delay] = 0x9 via a
+        // Three timers: timer.time3, timer.time2, timer.time1
+        x = 0x2
+    end
+    loop
+        a = [timer.time1:x]
+        // Only decrease timer if it is nonzero.
+        if is ~zero then
+            [timer.time1:x]--
+        end
+        x--
+    until negative end
+end
 
 //-----------------------------------------[ Choose routine ]-----------------------------------------
 
-//This is an indirect jump routine. A is used as an index into a code
-//pointer table, and the routine at that position is executed. The programmers
-//always put the pointer table itself directly after the JSR to choose_routine,
-//meaning that its address can be popped from the stack.
-
-def choose_routine:
-    //* 2, each ptr is 2 bytes (16-bit).
+// This is an indirect jump routine.
+// The accumulator is used as an index into jump table, and the routine
+// at that position is executed. The table itself must appear directly
+// after the call to choose_routine, so that the table's address can
+// be popped from the stack.
+def choose_routine: do
+    // Multiply index by 2, because each jump table entry is 2 bytes (16-bit).
     a = a << 1
-    //Temp storage.
+    // Temp storage.
     [tempy] = y
-    //Temp storage.
     [tempx] = x
+    
+    // We set y to a + 1, because jump table address
+    // on stack is 1 byte prior to location we need to read.
     y = a
     y++
-    //Low byte of ptr table address.
-    a = pop
-    [codeptr] = a
-    //High byte of ptr table address.
-    a = pop
-    [codeptr+1] = a
-    //Low byte of code ptr.
-    a = [[codeptr]:y]
-    x = a
+    // Get base jump table address from stack.
+    [codeptr] = pop via a
+    [codeptr+1] = pop via a
+
+    // Read low byte of table entry.
+    x = [[codeptr]:y] via a
     y++
-    //High byte of code ptr.
+    // Read high byte of table entry.
     a = [[codeptr]:y]
+
+    // Set code pointer to retrieved entry from jump table.
     [codeptr+1] = a
     [codeptr] = x
-    //Restore X.
+    //Restore X, Y
     x = [tempx]
-    //Restore Y.
     y = [tempy]
+    // Jump to location specified by code pointer.
     goto [codeptr]
+end
 
 //--------------------------------------[ Write to scroll registers ]---------------------------------
 
-def update_scroll:
-    //Reset scroll register flip/flop
+func update_scroll do
+    // Reset scroll register flip/flop
     a = [nes.ppu.status]
-    a = [scroll.x]
-    [nes.ppu.scroll] = a
-    //X and Y scroll offsets are loaded serially.
-    a = [scroll.y]
-    [nes.ppu.scroll] = a
-    return
+    // X and Y scroll offsets are loaded serially.
+    [nes.ppu.scroll] = [scroll.x] via a
+    [nes.ppu.scroll] = [scroll.y] via a
+end
 
 //----------------------------------[ Add y index to stored addresses ]-------------------------------
 
-//Add Y to pointer at $0000. 
+// Add y to pointer at [0x00] 
+func add_y_to_ptr_00 do
+    [0x0] = y + [0x0] via a
+    if is carry then
+        [0x1]++
+    end
+end
 
-def addytoptr00:
-
-    a = y
-    //Add value stored in Y to lower address-->
-    carry = 0
-    //byte stored in $00.
-    a = a +# [0x0]
-    [0x0] = a
-    //Increment $01(upper address byte) if carry-->
-    goto _001B when ~carry
-    //has occurred.
-    [0x1]++
-def _001B:
-    return
-
-//Add Y to pointer at $0002
-
-def addytoptr02:
-
-    a = y
-    //Add value stored in Y to lower address-->
-    carry = 0
-    //byte stored in $02.
-    a = a +# [0x2]
-    [0x2] = a
-    //Increment $01(upper address byte) if carry-->
-    goto _001C when ~carry
-    //has occurred.
-    [0x3]++
-def _001C:
-    return
+// Add y to pointer at [0x02]
+func add_y_to_ptr_02 do
+    [0x2] = y + [0x2] via a
+    if is carry then
+        [0x3]++
+    end
+end
 
 //--------------------------------[ Simple divide and multiply routines ]-----------------------------
 
@@ -799,7 +776,7 @@ def _001E:
     goto ppuwriteloop when ~zero
     y++
     //($C2A8)Point to next data chunk.
-    call addytoptr00
+    call add_y_to_ptr_00
 
 //Write data string at ($00) to PPU.
 
@@ -877,7 +854,7 @@ def _0021:
     [0x6] = y
     y = 0x20
     //($C2A8)Move to next name table line.
-    call addytoptr00
+    call add_y_to_ptr_00
     //Store index to find next tile info.
     y = [0x6]
     [0x4]--
@@ -979,7 +956,7 @@ def _0024:
     y = 0x20
 def _0025:
     //($C2A8)Set next PPU write address.(Does nothing, already set).
-    call addytoptr00
+    call add_y_to_ptr_00
     //Restore data index to Y.
     y = [0x6]
     //Decrement counter byte.
@@ -1244,7 +1221,7 @@ def _0030:
 def waittimer:
 
     //Exit if timer hasn't hit zero yet
-    a = [timer3]
+    a = [timer.time3]
     goto _0031 when ~zero
     //Set GameOver as next routine.
     a = [nextroutine]
@@ -1267,9 +1244,9 @@ def _0031:
 
 def settimer:
 
-    //Set Timer3. Frames to wait is value stored in A*10.
-    [timer3] = a
-    //Save routine to jump to after Timer3 expires.
+    //Set timer.time3. Frames to wait is value stored in A*10.
+    [timer.time3] = a
+    //Save routine to jump to after timer.time3 expires.
     [nextroutine] = x
     //Next routine to run is WaitTimer.
     a = 0x9
@@ -2142,7 +2119,7 @@ def samusinit:
     [mainroutine] = a
     //440 frames to fade in Samus(7.3 seconds).
     a = 0x2c
-    [timer3] = a
+    [timer.time3] = a
     //($CBFD)Start the intro music.
     call intromusic
     y = sa_fadein0
@@ -2373,7 +2350,7 @@ def samusintro:
     call clear_all_sprites
     //Load Samus' fade in status.
     y = [objaction]
-    a = [timer3]
+    a = [timer.time3]
     //Branch if Intro still playing.
     goto _004C when ~zero
     
@@ -2399,7 +2376,7 @@ def _004C:
     goto exit14 when carry
     //sa_FadeIn0 is beginning of table.
     compare a to [samusfadeintimetbl-20:y]
-    //Every time Timer3 equals one of the entries in the table-->
+    //Every time timer.time3 equals one of the entries in the table-->
     goto _004D when ~zero
     //below, change the palette used to color Samus.
     [objaction]++
@@ -2423,7 +2400,7 @@ def _004D:
     //($DE47)Draw Samus on screen.
     goto animdrawobject
 
-//The following table marks the time remaining in Timer3 when a palette change should occur during
+//The following table marks the time remaining in timer.time3 when a palette change should occur during
 //the Samus fade-in sequence. This creates the fade-in effect.
 
 def samusfadeintimetbl:
@@ -5313,7 +5290,7 @@ def elevatorscroll:
     [animindex:x] = a
     [objaction:x]++
     a = 0x40
-    [timer1] = a
+    [timer.time1] = a
     goto showelevator
 
 def elevscrollroom:
@@ -5404,7 +5381,7 @@ def _00F0:
     [animindex:x] = a
     [objaction:x]++
     a = 0x40
-    [timer1] = a
+    [timer.time1] = a
     return
 
 def startmusic:
@@ -8243,7 +8220,7 @@ def _018A:
     y = 0x20
 def _018B:
     //($C2A8)
-    call addytoptr00
+    call add_y_to_ptr_00
     y = [0x6]
     [0x5]--
     goto _018A when ~zero
@@ -10352,7 +10329,7 @@ def _01FD:
     //Macro width(in tiles).
     y = 0x2
     //($C2A8)Add 2 to pointer to move to next macro.
-    call addytoptr00
+    call add_y_to_ptr_00
     //Low byte of current room RAM work pointer.
     a = [0x0]
     //Still room left in current row?-->
