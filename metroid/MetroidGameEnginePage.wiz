@@ -135,7 +135,7 @@ def startup: do
     [gamemode] = y
 
     // Clear nametables and sprites.
-    call clear_all_nametables
+    call clear_both_nametables
     call clear_all_sprites
 
     //NMI = enabled
@@ -314,7 +314,7 @@ end
 
 //-------------------------------------[ Clear name tables ]------------------------------------------
 
-def clear_all_nametables:
+def clear_both_nametables:
     //($C16D)Always clear name table 0 first.
     call clear_nametable_0
     a = [gamemode]
@@ -1381,7 +1381,7 @@ def initbank0:
     //($A93E)Copy game map from ROM to cartridge RAM $7000-$73FF
     call copymap
     //($C158)Erase name table data.
-    call clear_all_nametables
+    call clear_both_nametables
 
     y = 0xa0
 def _0033:
@@ -2014,7 +2014,7 @@ def _003F:
     //($C439)Turn off Background and visibility.
     call screenoff
     //($C158)Clear screen data.
-    call clear_all_nametables
+    call clear_both_nametables
     //($C1A3)Erase all sprites from sprite RAM.
     call clear_all_sprites
     //($C8BB)

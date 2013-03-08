@@ -234,7 +234,7 @@ def drawintrobackground:
     //($C439)Turn screen off.
     call screenoff
     //($C158)Erase name table data.
-    call clear_all_nametables
+    call clear_both_nametables
     //Lower address of PPU information.
     x = 0xf4
     //Upper address of PPU information.
@@ -3111,7 +3111,7 @@ def clearall:
     //($C439)Turn screen off.
     call screenoff
     //Turn off screen, clear sprites and name tables.
-    call clear_all_nametables
+    call clear_both_nametables
     call clear_all_sprites
     //Set Name table address to $2000.
     a = [video.ctrl]
