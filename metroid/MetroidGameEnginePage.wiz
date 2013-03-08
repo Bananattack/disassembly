@@ -46,190 +46,142 @@ in game_engine_page, 0xC000:
 //every frame. The random numbers are used for several purposes including
 //password scrambling and determinig what items, if any, an enemy leaves
 //behind after it is killed.
-
-def randomnumbers:
-
-    a = x
-    push a
+func randomnumbers do
+    push x via a
     x = 0x5
-def _0000:
+    loop
+        //2E is increased by #$19 every frame and
+        //2F is increased by #$5F every frame.
+        [randomnumber1] = [randomnumber1] + 0x5 via a
+        [randomnumber2] = [randomnumber2] + 0x13 via a
+        x--
+    until zero end
+    x = pop via a
     a = [randomnumber1]
-    carry = 0
-    a = a +# 0x5
-    //2E is increased by #$19 every frame and-->
-    [randomnumber1] = a
-    //2F is increased by #$5F every frame.
-    a = [randomnumber2]
-    carry = 0
-    a = a +# 0x13
-    [randomnumber2] = a
-    x--
-    goto _0000 when ~zero
-    a = pop
-    x = a
-    a = [randomnumber1]
-    return
+end
 
 //------------------------------------------[ Startup ]----------------------------------------------
 
 def startup:
-
-    a = 0x0
-    //Clear bit 0. MMC1 is serial controlled
-    [mmc1reg1] = a
-    //Clear bit 1
-    [mmc1reg1] = a
-    //Clear bit 2
-    [mmc1reg1] = a
-    //Clear bit 3
-    [mmc1reg1] = a
-    //Clear bit 4
-    [mmc1reg1] = a
-    //Clear bit 0
-    [mmc1reg2] = a
-    //Clear bit 1
-    [mmc1reg2] = a
-    //Clear bit 2
-    [mmc1reg2] = a
-    //Clear bit 3
-    [mmc1reg2] = a
-    //Clear bit 4
-    [mmc1reg2] = a
-    //($C4FA)Swap to PRG bank #0 at $8000
+    a = 0x00
+    //Clear MMC1 registers.
+    unroll 5 do
+        [mmc1reg1] = a
+    end
+    unroll 5 do
+        [mmc1reg2] = a
+    end
+    // Swap to PRG bank #0 at $8000
     call mmcwritereg3
     //X = $FF
     x--
     //S points to end of stack page
     s = x
 
-//Clear RAM at $000-$7FF.
-    //High byte of start address.
-    y = 0x7
-    [0x1] = y
-    //Low byte of start address.
-    y = 0x0
+    //Clear RAM at $000-$7FF.
     //$0000 = #$0700
-    [0x0] = y
+    [0x1] = 0x7 via y
+    [0x0] = 0x0 via y
     //A = 0
     a = y
-def _0001:
-    //clear address
-    [[0x0]:y] = a
-    y++
-    //Repeat for entire page.
-    goto _0001 when ~zero
-    //Decrement high byte of address.
-    [0x1]--
-    //If $01 < 0, all pages are cleared.
-    goto _0002 when negative
-    x = [0x1]
-    //Keep looping until ram is cleared.
-    compare x to 0x1
-    goto _0001 when ~zero
+    loop
+        //clear address
+        [[0x0]:y] = a
+        y++
+        //Repeat for entire page.
+        continue when ~zero
+        //Decrement high byte of address.
+        [0x1]--
+        //If $01 < 0, all pages are cleared.
+        break when negative
+        x = [0x1]
+        //Keep looping until ram is cleared.
+        compare x to 0x1
+    until zero end
 
-//Clear cartridge RAM at $6000-$7FFF.
-def _0002:
-    //High byte of start address.
-    y = 0x7f
-    [0x1] = y
-    //Low byte of start address.
-    y = 0x0
+    //Clear cartridge RAM at $6000-$7FFF.
     //$0000 points to $7F00
-    [0x0] = y
+    [0x1] = 0x7f via y
+    [0x0] = 0x0 via y
     //A = 0
     a = y
-def _0003:
-    [[0x0]:y] = a
-    //Clears 256 bytes of memory before decrementing to next-->
-    y++
-    //256 bytes.
-    goto _0003 when ~zero
-    [0x1]--
-    //Is address < $6000?-->
-    x = [0x1]
-    //If not, do another page.
-    compare x to 0x60
-    goto _0003 when carry
+    loop
+        [[0x0]:y] = a
+        //Clears 256 bytes of memory before decrementing to next-->
+        y++
+        //256 bytes.
+        continue when ~zero
+        [0x1]--
+        //Is address < $6000?-->
+        x = [0x1]
+        //If not, do another page.
+        compare x to 0x60
+    until < end
 
-    //Verticle mirroring.
-    a = 0b00001110
-                    //H/V mirroring (As opposed to one-screen mirroring).
-                    //Switch low PRGROM area during a page switch.
-                    //16KB PRGROM switching enabled.
-                    //8KB CHRROM switching enabled.
-    [mmcreg0cntrl] = a
-
+    //Vertical mirroring.
+    //H/V mirroring (As opposed to one-screen mirroring).
+    //Switch low PRGROM area during a page switch.
+    //16KB PRGROM switching enabled.
+    //8KB CHRROM switching enabled.
+    [mmcreg0cntrl] = 0b00001110 via a
+    
     //Clear bits 3 and 4 of MMC1 register 3.
-    a = 0x0
-    [switchupperbits] = a
+    [switchupperbits] = 0x0 via a
 
-    y = 0x0
     //ScrollX = 0
-    [scrollx] = y
     //ScrollY = 0
+    [scrollx] = 0x0 via y
     [scrolly] = y
-    //Clear hardware scroll x
+    //Clear hardware scroll.
     [ppuscroll] = y
-    //Clear hardware scroll y
     [ppuscroll] = y
     //Y = #$01
     y++
     //Title screen mode
     [gamemode] = y
-    //($C158)
+
+    // Clear nametables and sprites.
     call clearnametables
-    //($C1A3)
     call eraseallsprites
 
     //NMI = enabled
-    a = 0b10010000
-                    //Sprite size = 8x8
-                    //BG pattern table address = $1000
-                    //SPR pattern table address = $0000
-                    //PPU address increment = 1
-                    //Name table address = $2000
-    [ppucontrol0] = a
+    //Sprite size = 8x8
+    //BG pattern table address = $1000
+    //SPR pattern table address = $0000
+    //PPU address increment = 1
+    //Name table address = $2000
+    [ppucontrol0] = 0b10010000 via a
     [ppucnt0zp] = a
-
     //Sprites visible = no
-    a = 0b00000010
-                    //Background visible = no
-                    //Sprite clipping = yes
-                    //Background clipping = no
-                    //Display type = color
-    [ppucnt1zp] = a
+    //Background visible = no
+    //Sprite clipping = yes
+    //Background clipping = no
+    //Display type = color
+    [ppucnt1zp] = 0b00000010 via a
 
-    a = 0x47
     //Prepare to set PPU to vertical mirroring.
-    [mirrorcntrl] = a
-    //($C4B2)
+    [mirrorcntrl] = 0x47 via a
     call prepvertmirror
 
-    a = 0x0
     //PCM volume = 0 - disables DMC channel
-    [dmccntrl1] = a
-    a = 0xf
+    [dmccntrl1] = 0x0 via a
     //Enable sound channel 0,1,2,3
-    [apucommoncntrl0] = a
+    [apucommoncntrl0] = 0x0F via a
 
-    y = 0x0
     //Set title routine and and main routine function-->
-    [titleroutine] = y
     //pointers equal to 0.
+    [titleroutine] = 0x00 via y
     [mainroutine] = y
-    a = 0x11
-    //Initialize RandomNumber1 to #$11
-    [randomnumber1] = a
-    a = 0xff
-    //Initialize RandomNumber2 to #$FF
-    [randomnumber2] = a
+    [randomnumber1] = 0x11 via a
+    [randomnumber2] = 0xff via a
 
     //Y = 1
     y++
+
     //Prepare to switch page 0 into lower PRGROM.
     [switchpending] = y
-    //($C4DE)
     call checkswitch
+
     //Branch always
     goto waitnmiend when ~zero
 
@@ -238,7 +190,6 @@ def _0003:
 //The main loop runs all the routines that take place outside of the NMI.
 
 def mainloop:
-
     //($C4DE)Check to see if memory page needs to be switched.
     call checkswitch
     //($C266)Update Timers 1, 2 and 3.
@@ -252,14 +203,13 @@ def mainloop:
     [nmistatus] = a
 
 def waitnmiend:
+    loop
+        y = a
+        a = [nmistatus]
+        //If nonzero, NMI has ended. Else keep waiting.
+        break when ~zero
+    end
 
-    y = a
-    a = [nmistatus]
-    //If nonzero, NMI has ended. Else keep waiting.
-    goto _0004 when ~zero
-    goto waitnmiend
-
-def _0004:
     //($C000)Update pseudo random numbers.
     call randomnumbers
     //($C0BC)Jump to top of subroutine.
@@ -273,63 +223,46 @@ def _0004:
 //will not be waiting as it is bogged down with excess calculations. This causes
 //the game to slow down.
 
-def nmi:
-
+task nmi do
     //Save processor status, A, X and Y on stack.
     push p
-    //Save A.
     push a
-    a = x
-    //Save X.
-    push a
-    a = y
-    //Save Y.
-    push a
-    a = 0x0
+    push x via a
+    push y via a
     //Sprite RAM address = 0.
-    [spraddress] = a
-    a = 0x2
+    [spraddress] = 0x0 via a
     //Transfer page 2 ($200-$2FF) to Sprite RAM.
-    [sprdmareg] = a
-    a = [nmistatus]
-    //Skip if the frame couldn't finish in time.
-    goto _0006 when ~zero
-    a = [gamemode]
-    //Branch if mode=Play.
-    goto _0005 when zero
-    //($9A07)Write end message on screen(If appropriate).
-    call nmiscreenwrite
-def _0005:
-    //($C1E0)Check if palette data pending.
-    call checkpalwrite
-    //($C2CA)check if data needs to be written to PPU.
-    call checkppuwrite
-    //($C44D)Update $2000 & $2001.
-    call writeppuctrl
-    //($C29A)Update h/v scroll reg.
-    call writescroll
-    //($C215)Read both joypads.
-    call readjoypads
-def _0006:
+    [sprdmareg] = 0x2 via a
+    // If requested, update the screen.
+    if a = [nmistatus] is zero then
+        if a = [gamemode] is ~zero then
+            //($9A07)Write end message on screen(If appropriate).
+            call nmiscreenwrite
+        end
+        //($C1E0)Check if palette data pending.
+        call checkpalwrite
+        //($C2CA)check if data needs to be written to PPU.
+        call checkppuwrite
+        //($C44D)Update $2000 & $2001.
+        call writeppuctrl
+        //($C29A)Update h/v scroll reg.
+        call writescroll
+        //($C215)Read both joypads.
+        call readjoypads
+    end
     //($B3B4)Update music and SFX.
     call soundengine
     //($C97E)Update Samus' age.
     call updateage
     //NMI = finished.
-    y = 0x1
-    [nmistatus] = y
-    //Restore Y.
+    [nmistatus] = 0x1 via y
+
+    //Restore Y, X, A, processor status.
+    y = pop via a
+    x = pop via a
     a = pop
-    y = a
-    //Restore X.
-    a = pop
-    x = a
-    //restore A.
-    a = pop
-    //Restore processor status flags.
     p = pop
-    //Return from NMI.
-    resume
+end
 
 //----------------------------------------[ GoMainRoutine ]-------------------------------------------
 
@@ -339,16 +272,13 @@ def _0006:
 //is executed.
 
 def gomainroutine:
-
     //0 if game is running, 1 if at intro screen.
-    a = [gamemode]
-    //Branch if mode=Play.
-    goto _0007 when zero
-    //Jump to $8000, where a routine similar to the one-->
-    goto 0x8000
-                    //below is executed, only using TitleRoutine instead
-                    //of MainRoutine as index into a jump table.
-def _0007:
+    if a = [gamemode] is ~zero then
+        //Jump to $8000, where a routine similar to the one
+        //below is executed, only using TitleRoutine instead
+        //of MainRoutine as index into a jump table.
+        goto 0x8000
+    end
     a = [joy1change]
     //Has START been pressed?-->
     a = a & 0x10
@@ -409,11 +339,10 @@ def _000A:
     //($C494)Delay.
     word: waittimer
 
-def incrementroutine:
-
+func incrementroutine do
     //Increment to next routine in above table.
     [mainroutine]++
-    return
+end
 
 //-------------------------------------[ Clear name tables ]------------------------------------------
 
@@ -452,8 +381,7 @@ def _000E:
     //Value to fill with.
     [0x0] = a
 
-def clearnametable:
-
+func clearnametable do
     //Reset PPU address latch.
     x = [ppustatus]
     a = [ppucnt0zp]
@@ -477,15 +405,16 @@ def clearnametable:
     y = 0x0
     //Fill-value.
     a = [0x0]
-def _000F:
-    [ppuioreg] = a
-    y--
-    //Loops until the desired name table is cleared.-->
-    goto _000F when ~zero
-    //It also clears the associated attribute table.
-    x--
-    goto _000F when ~zero
-    return
+    loop
+        [ppuioreg] = a
+        y--
+        //Loops until the desired name table is cleared.-->
+        continue when ~zero
+        //It also clears the associated attribute table.
+        x--
+        until zero
+    end
+end
 
 //The following table is used by the above routine for finding
 //the high byte of the proper name table to clear.
