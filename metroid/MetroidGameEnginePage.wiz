@@ -236,7 +236,7 @@ task vblank do
         //($C29A)Update h/v scroll reg.
         call update_scroll
         //($C215)Read both joypads.
-        call readjoypads
+        call update_joy
     end
     //($B3B4)Update music and SFX.
     call soundengine
@@ -494,93 +494,78 @@ end
 
 //The following routine reads the status of both joypads
 
-def readjoypads:
-
-    //Load x with #$00. Used to read status of joypad 1.
-    x = 0x0
-    [0x1] = x
-    call readonepad
-    //Load x with #$01. Used to read status of joypad 2.
+func update_joy do
+    // Read status of joypad 1.
+    [0x1] = 0 via x
+    call read
+    // Read status of joypad 2.
     x++
     [0x1]++
+    // fallthrough
 
-def readonepad:
-
-    //These lines strobe the -->
-    y = 0x1
-    //joystick to enable the -->
+def read:
+    // These lines strobe the joystick to enable the program
+    // to read which buttons are pressed.
+    y = 1
     [nes.joy.out] = y
-    //program to read the -->
     y--
-    //buttons pressed.
     [nes.joy.out] = y
     
     //Do 8 buttons.
-    y = 0x8
-def _0016:
-    //Store A.
-    push a
-    //Read button status. Joypad 1 or 2.
-    a = [nes.joy.in1:x]
-    //Store button press at location $00.
-    [0x0] = a
-    //Move button push to carry bit.
-    a = a >> 1
-    //If joystick not connected, -->
-    a = a | [0x0]
-    //fills joy1.status with all 1s.
-    a = a >> 1
-    //Restore A.
-    a = pop
-    //Add button press status to A.
-    a = a <<< 1
-    //Loop 8 times to get -->
-    y--
-    //status of all 8 buttons.
-    goto _0016 when ~zero
+    y = 8
+    loop
+        // Save A.
+        push a
+        // Read button status. Joypad 1 or 2.
+        // Store button press at location $00.
+        [0x0] = [nes.joy.in1:x] via a
+        // Move button push to carry bit.
+        // If joystick not connected,
+        // fills joy1.status with all 1s.
+        a = a >> 1 | [0x0] >> 1
+        // Restore A and add button press status to A.
+        a = pop <<< 1
+        y--
+    until zero end
 
-    //Joypad #(0 or 1).
+    // Joypad #(0 or 1).
     x = [0x1]
-    //Get joypad status of previous refresh.
+    // Get joypad status of previous refresh.
     y = [joy1.status:x]
-    //Store at $00.
+    // Store at $00.
     [0x0] = y
-    //Store current joypad status.
+    // Store current joypad status.
     [joy1.status:x] = a
-    a = a ^ [0x0]
-    //Branch if no buttons changed.
-    goto _0017 when zero
-    a = [0x0]
-    //Remove the previous status of the B button.
-    a = a & 0xbf
-    [0x0] = a
-    a = a ^ [joy1.status:x]
-def _0017:
-    //Save any button changes from the current frame-->
-    a = a & [joy1.status:x]
-    //and the last frame to the joy change addresses.
-    [joy1.delta:x] = a
-    //Store any changed buttons in JoyRetrig address.
+    // If any buttons changed,
+    if a = a ^ [0x0] is ~zero then
+        // Remove the previous status of the B button.
+        [0x0] = [0x0] & 0xBF via a
+        a = a ^ [joy1.status:x]
+    end
+
+    // Save any button changes from the current frame
+    // and the last frame to the joystick's delta.
+    [joy1.delta:x] = a & [joy1.status:x] via a
+    // Store any changed buttons in joystick's retrigger.
     [joy1.retrigger:x] = a
-    y = 0x20
-    //Checks to see if same buttons are being-->
-    a = [joy1.status:x]
-    //pressed this frame as last frame.-->
-    compare a to [0x0]
-    //If none, branch.
-    goto _0018 when ~zero
-    //Decrement RetrigDelay if same buttons pressed.
-    [joy1.delay:x]--
-    goto _0019 when ~zero
-    //Once RetrigDelay=#$00, store buttons to retrigger.
-    [joy1.retrigger:x] = a
-    y = 0x8
-def _0018:
-    //Reset retrigger delay to #$20(32 frames)-->
+    // Delay = 32 frames.
+    y = 32
+    
+    // Are same buttons are being pressed this frame as last frame?
+    if a = [joy1.status:x]; compare a to [0x0] is == then
+        // Decrement delay if same buttons pressed.
+        [joy1.delay:x]--
+        goto done when ~zero
+
+        // Once delay hits zero store buttons to retrigger.
+        [joy1.retrigger:x] = a
+        // Delay = 8 frames.
+        y = 8
+    end
+
     [joy1.delay:x] = y
-def _0019:
-    //or #$08(8 frames) if already retriggering.
-    return
+def done:
+end
 
 //-------------------------------------------[ Update timer ]-----------------------------------------
 
