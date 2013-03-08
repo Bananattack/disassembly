@@ -20,14 +20,12 @@
 
 in game_engine_page, 0xC000:
 
-
-
 //-------------------------------------[ Forward declarations ]--------------------------------------
 
     let objectanimindextbl = 0x8572
     let frameptrtable = 0x860B
     let placeptrtable = 0x86DF
-    let starpalswitch = 0x8AC7
+    let update_star_palette = 0x8AC7
     let samusenterdoor = 0x8B13
     let areapointers = 0x9598
     let arearoutine = 0x95C3
@@ -35,29 +33,31 @@ in game_engine_page, 0xC000:
     let enemyinitdelaytbl = 0x96BB
     let decspriteycoord = 0x988A
     let nmiscreenwrite = 0x9A07
-    let endgamepalwrite = 0x9F54
+    let update_endgame_palette = 0x9F54
     let specitmstable = 0x9598
     let copymap = 0xA93E
     let soundengine = 0xB3B4
 
 //----------------------------------------[ Start of code ]------------------------------------------
 
-//This routine generates pseudo random numbers and updates those numbers
-//every frame. The random numbers are used for several purposes including
-//password scrambling and determinig what items, if any, an enemy leaves
-//behind after it is killed.
-func randomize do
-    push x via a
-    x = 0x5
-    loop
-        //2E is increased by #$19 every frame and
-        //2F is increased by #$5F every frame.
-        [randomnumber1] = [randomnumber1] + 0x5 via a
-        [randomnumber2] = [randomnumber2] + 0x13 via a
-        x--
-    until zero end
-    x = pop via a
-    a = [randomnumber1]
+// This routine generates pseudo random numbers and updates those numbers
+// every frame. The random numbers are used for several purposes including
+// password scrambling and determinig what items, if any, an enemy leaves
+// behind after it is killed.
+package random do
+    func next do
+        push x via a
+        x = 0x5
+        //[random.val]  is increased by 0x19 every frame and
+        //[random.val2] is increased by 0x5F every frame.
+        loop
+            [random.val] = [random.val] + 0x5 via a
+            [random.val2] = [random.val2] + 0x13 via a
+            x--
+        until zero end
+        x = pop via a
+        a = [random.val]
+    end
 end
 
 //------------------------------------------[ Startup ]----------------------------------------------
@@ -166,8 +166,8 @@ def startup: do
     //pointers equal to 0.
     [titleroutine] = 0x00 via y
     [mainroutine] = y
-    [randomnumber1] = 0x11 via a
-    [randomnumber2] = 0xff via a
+    [random.val] = 0x11 via a
+    [random.val2] = 0xff via a
 
     //Y = 1
     y++
@@ -199,7 +199,7 @@ def startup: do
             break when ~zero
         end
 
-        call randomize
+        call random.next
     goto main_loop
 end
 
@@ -448,7 +448,7 @@ def check_pal_write: do
         // Is game at ending sequence?
         if a = [titleroutine]; compare a to 0x1D is >= then
             // ($9F54) Write palette data for ending.
-            goto endgamepalwrite
+            goto update_endgame_palette
         end
     end
 
@@ -461,7 +461,7 @@ def check_pal_write: do
         // Is intro playing?
         if a = [titleroutine]; compare a to 0x15 is < then
             // ($8AC7) Cycles palettes for intro stars twinkle.
-            goto starpalswitch
+            goto update_star_palette
         end
     end
 
@@ -6114,7 +6114,7 @@ def _0117:
     [enstatus:x] = a
     a = 0x60
     [0x40d:x] = a
-    a = [randomnumber1]
+    a = [random.val]
     compare a to 0x10
     goto game_engine_page_DD5B when ~carry
 def _0118:
@@ -6153,7 +6153,7 @@ def _011B:
     goto killobject
 
 def _011C:
-    a = [randomnumber1]
+    a = [random.val]
     y = 0x0
     [currentenergypickups] = y
     [currentmissilepickups] = y
@@ -10105,7 +10105,7 @@ def _01F3:
 def specenemyhandler:
 
     x = 0x18
-    a = [randomnumber1]
+    a = [random.val]
     a = a +# [framecount]
     [0x8a] = a
 def _01F4:
@@ -10130,7 +10130,7 @@ def _01F5:
     a = a +# [0x8a]
     a = a & 0x7f
     [0xb1:x] = a
-    a = a +# [randomnumber2]
+    a = a +# [random.val2]
     [0xb2:x] = a
     //($EB85)
     call getnametable
@@ -11791,7 +11791,7 @@ def _0262:
     a = a +# 0x97
     [0x1] = a
     a = [framecount]
-    a = a ^ [randomnumber1]
+    a = a ^ [random.val]
     y = 0x0
     a = a & [[0x0]:y]
     y = a
@@ -12457,7 +12457,7 @@ def game_engine_page_FC65:
     goto _028C when ~zero
     a = 0x3
     call updateenemyanim
-    a = [randomnumber1]
+    a = [random.val]
     [0x8a] = a
     a = 0x18
 def _028A:

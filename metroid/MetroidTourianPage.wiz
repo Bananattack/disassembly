@@ -1536,7 +1536,7 @@ def samusenterdoor:
     [currentmissilepickups] = a
     //Reset current missile and energy power-up counters.
     [currentenergypickups] = a
-    a = [randomnumber1]
+    a = [random.val]
     //Randomly recalculate max missile pickups(16 max, 0 min).
     a = a & 0xf
     [maxmissilepickup] = a
@@ -6612,7 +6612,7 @@ def tourian_page_B5F6:
     //After six or more frames of SFX, branch.
     compare a to 0x6
     goto _0024 when ~carry
-    a = [randomnumber1]
+    a = [random.val]
     //Set bit 5.
     a = a | 0x10
     //Randomly set bits 7, 3, 2, 1 and 0.
@@ -6664,7 +6664,7 @@ def _0026:
     y = 0x25
     //($B368)Set SQ1 SFX data.
     call loadsq1channelsfx
-    a = [randomnumber1]
+    a = [random.val]
     //Randomly set last four bits of SQ1 period low.
     a = a & 0xf
     [nes.apu.square1.low] = a
@@ -6672,7 +6672,7 @@ def _0026:
     y = 0x25
     //($B374)Set SQ2 SFX data.
     call loadsq2channelsfx
-    a = [randomnumber1]
+    a = [random.val]
     //Multiply random number by 4.
     a = a >> 1
     a = a >> 1
@@ -6688,13 +6688,13 @@ def tourian_page_B673:
     y = 0x25
     //($B368)Set SQ1 SFX data.
     call loadsq1channelsfx
-    a = [randomnumber1]
+    a = [random.val]
     //Randomly set last four bits of SQ1 period low.
     a = a & 0xf
     [nes.apu.square1.low] = a
     carry = 0
     //Randomly set last three bits of SQ2 period low+1.
-    a = [randomnumber1]
+    a = [random.val]
     a = a & 0x3
     //Number of frames to play sound before a change.
     a = a +# 0x1
@@ -6702,7 +6702,7 @@ def tourian_page_B673:
     y = 0x25
     //($B5A5)Initiate multi channel SFX.
     call multisfxinit
-    a = [randomnumber1]
+    a = [random.val]
     //Multiply random number by 4.
     a = a >> 1
     a = a >> 1
@@ -7139,7 +7139,7 @@ def tourian_page_B80E:
 def _0034:
     //($B978)Increase periods.
     call increasetriangleperiods
-    a = [randomnumber1]
+    a = [random.val]
     a = a & 0x3c
     [trianglesfxdata] = a
     //Randomly set or clear bits 2, 3, 4 and 5 in-->
@@ -7289,7 +7289,7 @@ def rndtriangleperiods:
 
 def _0037:
     //Randomly set or reset bits 7, 4, 2 and 1 of-->
-    a = [randomnumber1]
+    a = [random.val]
     //triangle channel period low.
     a = a | 0x6c
     [nes.apu.triangle.low] = a

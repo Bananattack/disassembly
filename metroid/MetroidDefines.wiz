@@ -88,10 +88,11 @@
     //Increments every frame(overflows every 256 frames).
     let framecount = 0x2D
 
-    //Random numbers used-->
-    let randomnumber1 = 0x2E
-    //throughout the game.
-    let randomnumber2 = 0x2F
+    package random do
+        // Random numbers used throughout the game.
+        let val = 0x2E
+        let val2 = 0x2F
+    end
 
     //Written to, but never accessed.
     let sparemem30 = 0x30
@@ -1039,7 +1040,7 @@ end
     let passwordbyte0e = 0x6996
     //Stores Statue statuses(bits 4 thu 7).
     let passwordbyte0f = 0x6997
-    //Stores value RandomNumber1.
+    //Stores value random.val.
     let passwordbyte10 = 0x6998
     //Stores sum of $6988 thru $6998(Checksum).
     let passwordbyte11 = 0x6999

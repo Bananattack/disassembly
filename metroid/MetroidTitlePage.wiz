@@ -1844,8 +1844,7 @@ def screenflashpaltbl:
 
 //----------------------------------[ Intro star palette routines ]-----------------------------------
 
-def starpalswitch:
-
+def update_star_palette:
     a = [framecount]
     //Change star palette every 16th frame.
     a = a & 0xf
@@ -2264,12 +2263,12 @@ def _0045:
     goto _0045 when ~negative
 def _0046:
     call 0xc000
-    a = [randomnumber1]
+    a = [random.val]
     //Store the value of $2E at $6998-->
     a = a & 0xf
     //When any of the 4 LSB are set. (Does not-->
     goto _0046 when zero
-    //allow RandomNumber1 to be a multiple of 16).
+    //allow random.val to be a multiple of 16).
     [passwordbyte10] = a
     //($8E17)Calculate checksum and scramble password.
     call passwordchecksumandscramble
@@ -5815,8 +5814,7 @@ def endstardatatable:
     byte: 0x73, 0x26, 0x23, 0xe7
     byte: 0xc, 0x26, 0x22, 0xaa
 
-def endgamepalwrite:
-
+def update_endgame_palette:
     //If no palette data pending, branch to exit.
     a = [video.palette_pending]
     goto _00BC when zero
@@ -10449,7 +10447,7 @@ def title_page_B5F6:
     //After six or more frames of SFX, branch.
     compare a to 0x6
     goto _00D5 when ~carry
-    a = [randomnumber1]
+    a = [random.val]
     //Set bit 5.
     a = a | 0x10
     //Randomly set bits 7, 3, 2, 1 and 0.
@@ -10501,7 +10499,7 @@ def _00D7:
     y = 0x25
     //($B368)Set SQ1 SFX data.
     call loadsq1channelsfx
-    a = [randomnumber1]
+    a = [random.val]
     //Randomly set last four bits of SQ1 period low.
     a = a & 0xf
     [nes.apu.square1.low] = a
@@ -10509,7 +10507,7 @@ def _00D7:
     y = 0x25
     //($B374)Set SQ2 SFX data.
     call loadsq2channelsfx
-    a = [randomnumber1]
+    a = [random.val]
     //Multiply random number by 4.
     a = a >> 1
     a = a >> 1
@@ -10525,13 +10523,13 @@ def title_page_B673:
     y = 0x25
     //($B368)Set SQ1 SFX data.
     call loadsq1channelsfx
-    a = [randomnumber1]
+    a = [random.val]
     //Randomly set last four bits of SQ1 period low.
     a = a & 0xf
     [nes.apu.square1.low] = a
     carry = 0
     //Randomly set last three bits of SQ2 period low+1.
-    a = [randomnumber1]
+    a = [random.val]
     a = a & 0x3
     //Number of frames to play sound before a change.
     a = a +# 0x1
@@ -10539,7 +10537,7 @@ def title_page_B673:
     y = 0x25
     //($B5A5)Initiate multi channel SFX.
     call multisfxinit
-    a = [randomnumber1]
+    a = [random.val]
     //Multiply random number by 4.
     a = a >> 1
     a = a >> 1
@@ -10976,7 +10974,7 @@ def title_page_B80E:
 def _00E5:
     //($B978)Increase periods.
     call increasetriangleperiods
-    a = [randomnumber1]
+    a = [random.val]
     a = a & 0x3c
     [trianglesfxdata] = a
     //Randomly set or clear bits 2, 3, 4 and 5 in-->
@@ -11126,7 +11124,7 @@ def rndtriangleperiods:
 
 def _00E8:
     //Randomly set or reset bits 7, 4, 2 and 1 of-->
-    a = [randomnumber1]
+    a = [random.val]
     //triangle channel period low.
     a = a | 0x6c
     [nes.apu.triangle.low] = a
