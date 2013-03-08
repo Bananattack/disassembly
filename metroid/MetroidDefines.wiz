@@ -579,9 +579,9 @@
     //Desired address number in VolumeCntrlAdressTbl
     let volumecntrladdress = 0xEB
 
-    //Loaded into SQ1Cntrl2 when playing music
+    //Loaded into nes.apu.square1.low when playing music
     let musicsq1periodlow = 0x0600
-    //Loaded into SQ1Cntrl3 when playing music
+    //Loaded into nes.apu.square1.high when playing music
     let musicsq1periodhigh = 0x0601
 
     //0=Game not paused, 1=Game paused
@@ -589,7 +589,7 @@
     //Plays PauseMusic SFX if less than #$12
     let pausesfxstatus = 0x0603
 
-    //Loaded into SQ2Cntrl2 when playing music
+    //Loaded into nes.apu.square2.low when playing music
     let musicsq2periodlow = 0x0604
     //Loaded into SQ2Cntrl3 when playing music
     let musicsq2periodhigh = 0x0605
@@ -644,9 +644,9 @@
     //Number of times to repeat Noise music loop
     let noiserepeatcounter = 0x0627
 
-    //Loaded into SQ1Cntrl0 when playing music
+    //Loaded into nes.apu.square1.ctrk when playing music
     let sq1dutyenvelope = 0x0628
-    //Loaded into SQ2Cntrl0 when playing music
+    //Loaded into nes.apu.square2.ctrl when playing music
     let sq2dutyenvelope = 0x0629
     //disable\enable counter, linear count length
     let trilinearcount = 0x062A
@@ -864,54 +864,68 @@
 
 //-------------------------------------[ Hardware defines ]-------------------------------------------
 
-    let ppucontrol0 = 0x2000
-    let ppucontrol1 = 0x2001
-    let ppustatus = 0x2002
-    //PPU hardware control registers.
-    let spraddress = 0x2003
-    let sprioreg = 0x2004
-    let ppuscroll = 0x2005
-    let ppuaddress = 0x2006
-    let ppuioreg = 0x2007
+package nes do
+    package ppu do
+        package oam do
+            let address = 0x2003
+            let data = 0x2004
+            let dma = 0x4014
+        end
 
-    let sq1cntrl0 = 0x4000
-    //SQ1 hardware control registers.
-    let sq1cntrl1 = 0x4001
-    let sq1cntrl2 = 0x4002
-    let sq1cntrl3 = 0x4003
+        let ctrl = 0x2000
+        let mask = 0x2001
+        let status = 0x2002
+        let scroll = 0x2005
+        let address = 0x2006
+        let data = 0x2007
+    end
 
-    let sq2cntrl0 = 0x4004
-    //SQ2 hardware control registers.
-    let sq2cntrl1 = 0x4005
-    let sq2cntrl2 = 0x4006
-    let sq2cntrl3 = 0x4007
+    package apu do
+        package square1 do
+            let ctrl = 0x4000
+            let sweep = 0x4001
+            let low = 0x4002
+            let high = 0x4003
+        end
+        
+        package square2 do
+            let ctrl = 0x4004
+            let sweep = 0x4005
+            let low = 0x4006
+            let high = 0x4007
+        end
+        
+        package triangle do
+            let ctrl = 0x4008
+            // triangle register 0x4009 is unused
+            let low = 0x400A
+            let high = 0x400B
+        end
+        
+        package noise do
+            let ctrl = 0x400C
+            // noise register 0x400D is unused
+            let random = 0x400E
+            let length = 0x400F
+        end
 
-    let trianglecntrl0 = 0x4008
-    //Triangle hardware control registers.
-    let trianglecntrl1 = 0x4009
-    let trianglecntrl2 = 0x400A
-    let trianglecntrl3 = 0x400B
+        package dmc do
+            let ctrl = 0x4010
+            let load = 0x4011
+            let address = 0x4012
+            let length = 0x4013
+        end
 
-    let noisecntrl0 = 0x400C
-    //Noise hardware control registers.
-    let noisecntrl1 = 0x400D
-    let noisecntrl2 = 0x400E
-    let noisecntrl3 = 0x400F
+        let flag = 0x4015
+        let sequencer = 0x4017
+    end
 
-    let dmccntrl0 = 0x4010
-    //DMC hardware control registers.
-    let dmccntrl1 = 0x4011
-    let dmccntrl2 = 0x4012
-    let dmccntrl3 = 0x4013
-
-    //Sprite RAM DMA register.
-    let sprdmareg = 0x4014
-    //APU common control 1 register.
-    let apucommoncntrl0 = 0x4015
-    //Joypad1 register.
-    let cpujoypad1 = 0x4016
-    //Joypad2/APU common control 2 register.
-    let apucommoncntrl1 = 0x4017
+    package joy do
+        let out = 0x4016
+        let in1 = 0x4016
+        let in2 = 0x4017
+    end
+end
 
 //----------------------------------------------------------------------------------------------------
 

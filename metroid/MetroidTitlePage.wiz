@@ -234,7 +234,7 @@ def drawintrobackground:
     //($C439)Turn screen off.
     call screenoff
     //($C158)Erase name table data.
-    call clearnametables
+    call clear_all_nametables
     //Lower address of PPU information.
     x = 0xf4
     //Upper address of PPU information.
@@ -3111,8 +3111,8 @@ def clearall:
     //($C439)Turn screen off.
     call screenoff
     //Turn off screen, clear sprites and name tables.
-    call clearnametables
-    call eraseallsprites
+    call clear_all_nametables
+    call clear_all_sprites
     //Set Name table address to $2000.
     a = [ppucnt0zp]
     a = a & 0xfc
@@ -3244,7 +3244,7 @@ def loadpasswordscreen:
 def enterpassword:
 
     //($C1A3)Remove sprites from screen.
-    call eraseallsprites
+    call clear_all_sprites
     a = [joy1change]
     //Check to see if START has been pressed.
     a = a & 0x10
@@ -3626,7 +3626,7 @@ def _007E:
     a = a & 0xf
     y = a
     //Change to proper memory page.
-    a = [banktable:y]
+    a = [switch_bank_table:y]
     [switchpending] = a
 def title_page_9324:
     return
@@ -3854,7 +3854,7 @@ def _0080:
 def displayinputcharacters:
 
     //Clear address latches.
-    a = [ppustatus]
+    a = [nes.ppu.status]
     y = 0x0
     //Initially sets $00 an $01.
     a = y
@@ -3866,20 +3866,20 @@ def _0081:
     a = a << 1
     x = a
     a = [passwordrowstbl:x]
-    [ppuaddress] = a
+    [nes.ppu.address] = a
     //Displays the list of characters -->
     a = [passwordrowstbl+1:x]
     //to choose from on the password-->
-    [ppuaddress] = a
+    [nes.ppu.address] = a
     //entry screen.
     x = 0x0
 def _0082:
     //Base is $99A2.
     a = [passwordrow0:y]
-    [ppuioreg] = a
+    [nes.ppu.data] = a
     //Blank tile.
     a = 0xff
-    [ppuioreg] = a
+    [nes.ppu.data] = a
     y++
     x++
     //13 characters in current row?
@@ -5164,7 +5164,7 @@ def _00A2:
     [spriteattribbyte] = y
     [roomptr]++
     //($C1A3)Clear all sprites off the screen.
-    goto eraseallsprites
+    goto clear_all_sprites
 def _00A3:
     //Decrement ClrChangeCounter.
     [clrchangecounter]--
@@ -5311,9 +5311,9 @@ def rollcredits:
     //($C439)When 20 frames left in Timer3,-->
     call screenoff
     //($C16D)clear name table 0 and sprites.-->
-    call clearnametable0
+    call clear_nametable_0
     //($C1A3)prepares screen for credits.
-    call eraseallsprites
+    call clear_all_sprites
     a = 0xd
     //Change to proper palette for credits.
     [paldatapending] = a
@@ -5843,13 +5843,13 @@ def _00BB:
     //($C20E)Prepare to write data string to PPU.
     call prepareppuprocess_
     a = 0x3f
-    [ppuaddress] = a
+    [nes.ppu.address] = a
     a = 0x0
     //Set PPU address to $3F00.
-    [ppuaddress] = a
-    [ppuaddress] = a
+    [nes.ppu.address] = a
+    [nes.ppu.address] = a
     //Set PPU address to $0000.
-    [ppuaddress] = a
+    [nes.ppu.address] = a
 def _00BC:
     return
 
@@ -9916,7 +9916,7 @@ def soundengine:
  
     //Set APU to 5 frame cycle, disable frame interrupt.
     a = 0xc0
-    [apucommoncntrl1] = a
+    [nes.apu.sequencer] = a
     //is bit zero is set in NoiseSFXFlag(Silence-->
     a = [noisesfxflag]
     //music)?  If yes, branch.
@@ -10019,14 +10019,14 @@ def clearmusicandsfxaddresses:
 def clearsounds:
                 //
     a = 0x10
-    [sq1cntrl0] = a
-    [sq2cntrl0] = a
+    [nes.apu.square1.ctrl] = a
+    [nes.apu.square2.ctrl] = a
     //Clears all sounds that might be in-->
-    [noisecntrl0] = a
+    [nes.apu.noise.ctrl] = a
     //The sound channel registers.
     a = 0x0
-    [trianglecntrl0] = a
-    [dmccntrl1] = a
+    [nes.apu.triangle.ctrl] = a
+    [nes.apu.dmc.load] = a
     return
 
 def selectsfxroutine:
@@ -10234,9 +10234,9 @@ def title_page_B516:
     goto endnoisesfx
 def _00D1:
     y = [noisesfxdata]
-    //Load data from table above and store in NoiseCntrl0.
+    //Load data from table above and store in nes.apu.noise.ctrl.
     a = [title_page_B4FB:y]
-    [noisecntrl0] = a
+    [nes.apu.noise.ctrl] = a
     //Increment to next entry in data table.
     [noisesfxdata]++
     return
@@ -10299,7 +10299,7 @@ def incrementperiodindex:
     [noisesfxdata]++
     //lowering the frequency of the noise SFX.
     a = [noisesfxdata]
-    [noisecntrl2] = a
+    [nes.apu.noise.random] = a
     return
 
 def missilelaunchsfxstart:
@@ -10355,7 +10355,7 @@ def endnoisesfx:
     call clearcurrentsfxflags
     a = 0x10
     //disable envelope generator(sound off).
-    [noisecntrl0] = a
+    [nes.apu.noise.ctrl] = a
 
 def musicbranch02:
 
@@ -10404,14 +10404,14 @@ def endmultisfx:
 
     a = 0x10
     //Disable SQ1 envelope generator(sound off).
-    [sq1cntrl0] = a
+    [nes.apu.square1.ctrl] = a
     //Disable SQ2 envelope generator(sound off).
-    [sq2cntrl0] = a
+    [nes.apu.square2.ctrl] = a
     a = 0x7f
     //Disable SQ1 sweep.
-    [sq1cntrl1] = a
+    [nes.apu.square1.sweep] = a
     //Disable SQ2 sweep.
-    [sq2cntrl1] = a
+    [nes.apu.square2.sweep] = a
     //($B4A2)Clear all SFX flags.
     call clearcurrentsfxflags
     a = 0x0
@@ -10441,8 +10441,8 @@ def title_page_B5F6:
     y = [sq1sfxdata]
     a = [title_page_B63C:y]
     //Load SQ1Cntrl0 and SQ2Cntrl0 from table below.
-    [sq1cntrl0] = a
-    [sq2cntrl0] = a
+    [nes.apu.square1.ctrl] = a
+    [nes.apu.square2.ctrl] = a
     a = [sq1sfxdata]
     //After #$14 frames, end SFX.
     compare a to 0x14
@@ -10472,10 +10472,10 @@ def writesq1sq2periodlow:
 
     a = [sq1sq2sfxdata]
     //Write new SQ1 and SQ2 period lows to SQ1 and SQ2-->
-    [sq2cntrl2] = a
+    [nes.apu.square2.low] = a
     //channels.
     a = [sq1sfxperiodlow]
-    [sq1cntrl2] = a
+    [nes.apu.square1.low] = a
     return
 
 def _00D6:
@@ -10505,7 +10505,7 @@ def _00D7:
     a = [randomnumber1]
     //Randomly set last four bits of SQ1 period low.
     a = a & 0xf
-    [sq1cntrl2] = a
+    [nes.apu.square1.low] = a
     //Low byte of SQ2 sound data start address(base=$B200).
     y = 0x25
     //($B374)Set SQ2 SFX data.
@@ -10516,7 +10516,7 @@ def _00D7:
     a = a >> 1
     a = a & 0xf
     //Randomly set bits 2 and 3 of SQ2 period low.
-    [sq2cntrl2] = a
+    [nes.apu.square2.low] = a
     return
 
 def samushitsfxstart:
@@ -10529,7 +10529,7 @@ def title_page_B673:
     a = [randomnumber1]
     //Randomly set last four bits of SQ1 period low.
     a = a & 0xf
-    [sq1cntrl2] = a
+    [nes.apu.square1.low] = a
     carry = 0
     //Randomly set last three bits of SQ2 period low+1.
     a = [randomnumber1]
@@ -10546,7 +10546,7 @@ def title_page_B673:
     a = a >> 1
     a = a & 0xf
     //Randomly set bits 2 and 3 of SQ2 period low.
-    [sq2cntrl2] = a
+    [nes.apu.square2.low] = a
 def _00D8:
     return
 
@@ -10574,7 +10574,7 @@ def title_page_B6A1:
     //($B5CD)End SFX.
     goto endmultisfx
 
-//The following table is used by the below routine to load SQ1Cntrl2 data in the
+//The following table is used by the below routine to load nes.apu.square1.low data in the
 //MissilePickupSFXContinue routine.
 
 def missilepickupsfxtbl:
@@ -10595,11 +10595,11 @@ def title_page_B6B0:
     //($B6F2)SFX completed.
     goto endsq1sfx
 def _00D9:
-    [sq1cntrl2] = a
+    [nes.apu.square1.low] = a
     //#$28.
     a = [0xb244]
-    //load SQ1Cntrl3 with #$28.
-    [sq1cntrl3] = a
+    //load nes.apu.square1.high with #$28.
+    [nes.apu.square1.high] = a
     //Increment index to data table above every 5 frames.
     [sq1sfxdata]++
 
@@ -10660,7 +10660,7 @@ def endsq1sfx:
 def _00DA:
     a = 0x10
     //Disable envelope generator(sound off).
-    [sq1cntrl0] = a
+    [nes.apu.square1.ctrl] = a
     a = 0x0
     //Allows music to use SQ1 channel.
     [sq1inuse] = a
@@ -10836,7 +10836,7 @@ def title_page_B781:
     [sq1sq2sfxdata]++
     //data from WaveBeamSFXDisableLengthTbl.
     a = [wavebeamsfxdislngthtbl:y]
-    [sq1cntrl0] = a
+    [nes.apu.square1.ctrl] = a
     //If at end of WaveBeamSFXDisableLengthTbl, end SFX.
     goto musicbranch10 when ~zero
     //($B6F2)If SFX finished, jump.
@@ -10853,7 +10853,7 @@ def loadsq1periodlow:
 
 def _00E3:
     //Change the period low data for SQ1 channel.
-    [sq1cntrl2] = a
+    [nes.apu.square1.low] = a
     [sq1sfxdata]++
 
 def musicbranch10:
@@ -10985,11 +10985,11 @@ def _00E5:
     //triangle channel period low.
     a = a & 0xc3
     a = a | [trianglesfxdata]
-    [trianglecntrl2] = a
+    [nes.apu.triangle.low] = a
     a = [triangleperiodhigh]
     //Set 4th bit in triangle channel period high.
     a = a | 0x40
-    [trianglecntrl3] = a
+    [nes.apu.triangle.high] = a
     return
 
 def samustoballsfxstart:
@@ -11040,11 +11040,11 @@ def writetriangleperiods:
 
     //Write TrianglePeriodLow to triangle channel.
     a = [triangleperiodlow]
-    [trianglecntrl2] = a
+    [nes.apu.triangle.low] = a
     a = [triangleperiodhigh]
     //Write TrianglePeriodHigh to triangle channel.
     a = a | 0x8
-    [trianglecntrl3] = a
+    [nes.apu.triangle.high] = a
     return
 
 def bomblaunchsfxstart:
@@ -11081,12 +11081,12 @@ def endtrianglesfx:
 
     a = 0x0
     //clear TriangleCntr0(sound off).
-    [trianglecntrl0] = a
+    [nes.apu.triangle.ctrl] = a
     //Allows music to use triangle channel.
     [triangleinuse] = a
     a = 0x18
     //Set length index to #$03.
-    [trianglecntrl3] = a
+    [nes.apu.triangle.high] = a
     //($B4A2)Clear all SFX flags.
     call clearcurrentsfxflags
 
@@ -11130,12 +11130,12 @@ def _00E8:
     a = [randomnumber1]
     //triangle channel period low.
     a = a | 0x6c
-    [trianglecntrl2] = a
+    [nes.apu.triangle.low] = a
     a = a & 0x1
     //Randomly set or reset last bit of triangle-->
     a = a | 0xf8
     //channel period high.
-    [trianglecntrl3] = a
+    [nes.apu.triangle.high] = a
     return
 
 def samusdiesfxstart:
@@ -11370,19 +11370,19 @@ def loadsq1sq2periods:
     //Clear multi channel data write flag.
     [writemultichanneldata] = a
     a = [musicsq1sweep]
-    [sq1cntrl1] = a
+    [nes.apu.square1.sweep] = a
     a = [musicsq1periodlow]
     //Loads SQ1 channel addresses $4001, $4002, $4003.
-    [sq1cntrl2] = a
+    [nes.apu.square1.low] = a
     a = [musicsq1periodhigh]
-    [sq1cntrl3] = a
+    [nes.apu.square1.high] = a
     a = [musicsq2sweep]
-    [sq2cntrl1] = a
+    [nes.apu.square2.sweep] = a
     a = [musicsq2periodlow]
     //Loads SQ2 channel addresses $4005, $4006, $4007.
-    [sq2cntrl2] = a
+    [nes.apu.square2.low] = a
     a = [musicsq2periodhigh]
-    [sq2cntrl3] = a
+    [nes.apu.square2.high] = a
 def _00F1:
     return
 
@@ -11466,7 +11466,7 @@ def _00F5:
 def writesq2cntrl0:
                 //
     //Write SQ2Cntrl0 data.
-    [sq2cntrl0] = y
+    [nes.apu.square2.ctrl] = y
 def _00F6:
     return
 
@@ -11474,7 +11474,7 @@ def writesq1cntrl0:
                 //
 def _00F7:
     //Write SQ1Cntrl0 data.
-    [sq1cntrl0] = y
+    [nes.apu.square1.ctrl] = y
     return
 
 def musicbranch05:
@@ -11730,18 +11730,18 @@ def _0105:
 def _0106:
     a = [cntrl0data]
     //Write Cntrl0Data.
-    [sq1cntrl0:y] = a
+    [nes.apu.square1.ctrl:y] = a
 def _0107:
     a = [cntrl0data]
     //Store volume data index to volume data.
     [sq1volumedata:x] = a
     a = [musicsq1periodlow:y]
-    [sq1cntrl2:y] = a
+    [nes.apu.square1.low:y] = a
     //Write data to three sound channel addresses.
     a = [musicsq1periodhigh:y]
-    [sq1cntrl3:y] = a
+    [nes.apu.square1.high:y] = a
     a = [musicsq1sweep:x]
-    [sq1cntrl1:y] = a
+    [nes.apu.square1.sweep:y] = a
 
 def loadnewmusicframecount:
 
@@ -11807,13 +11807,13 @@ def loadnoisechannelmusic:
     goto _010C when ~zero
     a = [title_page_B200:y]
     //Load noise channel with drum beat SFX starting-->
-    [noisecntrl0] = a
+    [nes.apu.noise.ctrl] = a
     //at address B201.  The possible values of Y are-->
     a = [title_page_B201:y]
     //#$01, #$04, #$07 or #$0A.
-    [noisecntrl2] = a
+    [nes.apu.noise.random] = a
     a = [0xb202:y]
-    [noisecntrl3] = a
+    [nes.apu.noise.length] = a
 def _010C:
     //($BBA8)Load new music frame count.
     goto loadnewmusicframecount
@@ -12951,14 +12951,14 @@ def reset:
     decimal = 0
     x = 0x0
     //Clear PPU control registers.
-    [ppucontrol0] = x
-    [ppucontrol1] = x
+    [nes.ppu.ctrl] = x
+    [nes.ppu.mask] = x
 def _0114:
-    a = [ppustatus]
+    a = [nes.ppu.status]
     //Wait for VBlank.
     goto _0114 when ~negative
 def _0115:
-    a = [ppustatus]
+    a = [nes.ppu.status]
     goto _0115 when ~negative
     a = a | 0xff
     //Reset MMC1 chip.-->

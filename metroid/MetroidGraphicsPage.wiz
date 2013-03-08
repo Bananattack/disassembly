@@ -1088,14 +1088,14 @@ def reset:
     decimal = 0
     x = 0x0
     //Clear PPU control registers.
-    [ppucontrol0] = x
-    [ppucontrol1] = x
+    [nes.ppu.ctrl] = x
+    [nes.ppu.mask] = x
 def _0000:
-    a = [ppustatus]
+    a = [nes.ppu.status]
     //Wait for VBlank.
     goto _0000 when ~negative
 def _0001:
-    a = [ppustatus]
+    a = [nes.ppu.status]
     goto _0001 when ~negative
     a = a | 0xff
     //Reset MMC1 chip.-->

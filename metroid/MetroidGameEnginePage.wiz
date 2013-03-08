@@ -46,7 +46,7 @@ in game_engine_page, 0xC000:
 //every frame. The random numbers are used for several purposes including
 //password scrambling and determinig what items, if any, an enemy leaves
 //behind after it is killed.
-func randomnumbers do
+func randomize do
     push x via a
     x = 0x5
     loop
@@ -133,16 +133,16 @@ def startup:
     [scrollx] = 0x0 via y
     [scrolly] = y
     //Clear hardware scroll.
-    [ppuscroll] = y
-    [ppuscroll] = y
+    [nes.ppu.scroll] = y
+    [nes.ppu.scroll] = y
     //Y = #$01
     y++
     //Title screen mode
     [gamemode] = y
 
     // Clear nametables and sprites.
-    call clearnametables
-    call eraseallsprites
+    call clear_all_nametables
+    call clear_all_sprites
 
     //NMI = enabled
     //Sprite size = 8x8
@@ -150,7 +150,7 @@ def startup:
     //SPR pattern table address = $0000
     //PPU address increment = 1
     //Name table address = $2000
-    [ppucontrol0] = 0b10010000 via a
+    [nes.ppu.ctrl] = 0b10010000 via a
     [ppucnt0zp] = a
     //Sprites visible = no
     //Background visible = no
@@ -164,9 +164,9 @@ def startup:
     call prepvertmirror
 
     //PCM volume = 0 - disables DMC channel
-    [dmccntrl1] = 0x0 via a
+    [nes.apu.dmc.load] = 0x0 via a
     //Enable sound channel 0,1,2,3
-    [apucommoncntrl0] = 0x0F via a
+    [nes.apu.flag] = 0x0F via a
 
     //Set title routine and and main routine function-->
     //pointers equal to 0.
@@ -180,7 +180,7 @@ def startup:
 
     //Prepare to switch page 0 into lower PRGROM.
     [switchpending] = y
-    call checkswitch
+    call check_bank_switch
 
     //Branch always
     goto waitnmiend when ~zero
@@ -189,31 +189,27 @@ def startup:
 
 //The main loop runs all the routines that take place outside of the NMI.
 
-def mainloop:
+def main_loop:
     //($C4DE)Check to see if memory page needs to be switched.
-    call checkswitch
+    call check_bank_switch
     //($C266)Update Timers 1, 2 and 3.
-    call updatetimer
+    call update_timer
     //($C114)Go to main routine for updating game.
-    call gomainroutine
-    //Increment frame counter.
+    call update_main
+    // Increment frame counter.
     [framecount]++
-    a = 0x0
-    //Wait for next NMI to end.
-    [nmistatus] = a
-
+    // Request redraw.
+    [nmistatus] = 0x00 via a
+    // Wait for redraw to be acknowledged.
 def waitnmiend:
     loop
         y = a
         a = [nmistatus]
-        //If nonzero, NMI has ended. Else keep waiting.
         break when ~zero
     end
 
-    //($C000)Update pseudo random numbers.
-    call randomnumbers
-    //($C0BC)Jump to top of subroutine.
-    goto mainloop
+    call randomize
+goto main_loop
 
 //-------------------------------------[ Non-Maskable Interrupt ]-------------------------------------
 
@@ -230,9 +226,9 @@ task nmi do
     push x via a
     push y via a
     //Sprite RAM address = 0.
-    [spraddress] = 0x0 via a
+    [nes.ppu.oam.address] = 0x0 via a
     //Transfer page 2 ($200-$2FF) to Sprite RAM.
-    [sprdmareg] = 0x2 via a
+    [nes.ppu.oam.dma] = 0x2 via a
     // If requested, update the screen.
     if a = [nmistatus] is zero then
         if a = [gamemode] is ~zero then
@@ -271,7 +267,7 @@ end
 //is used as an index into a code pointer table, and this routine
 //is executed.
 
-def gomainroutine:
+def update_main:
     //0 if game is running, 1 if at intro screen.
     if a = [gamemode] is ~zero then
         //Jump to $8000, where a routine similar to the one
@@ -346,71 +342,62 @@ end
 
 //-------------------------------------[ Clear name tables ]------------------------------------------
 
-def clearnametables:
-
+def clear_all_nametables:
     //($C16D)Always clear name table 0 first.
-    call clearnametable0
+    call clear_nametable_0
     a = [gamemode]
     //Branch if mode = Play.
-    goto _000B when zero
+    goto clear_nametable_1 when zero
     a = [titleroutine]
     //If running the end game routine, clear-->
-    compare a to 0x1d
     //name table 2, else clear name table 1.
-    goto _000C when zero
-def _000B:
-    //Name table to clear + 1 (name table 1).
+    compare a to 0x1d
+    goto clear_nametable_2 when zero
+def clear_nametable_1:
     a = 0x2
     //Branch always.
-    goto _000E when ~zero
-def _000C:
-    //Name table to clear + 1 (name table 2).
+    goto clear_nametable_a when ~zero
+def clear_nametable_2:
     a = 0x3
     //Branch always.
-    goto _000E when ~zero
-
-def clearnametable0:
-
-def _000D:
-    //Name table to clear + 1 (name table 0).
+    goto clear_nametable_a when ~zero
+def clear_nametable_0:
     a = 0x1
-def _000E:
-    //Stores name table to clear.
-    [0x1] = a
-    a = 0xff
-    //Value to fill with.
-    [0x0] = a
+def clear_nametable_a: do
+    let dest = 0x1
+    let fill = 0x0
+    [dest] = a
+    [fill] = 0xff via a
+    // fallthrough
+end
 
-func clearnametable do
-    //Reset PPU address latch.
-    x = [ppustatus]
-    a = [ppucnt0zp]
-    //PPU increment = 1.
-    a = a & 0xfb
-    [ppucnt0zp] = a
-    //Store control bits in PPU.
-    [ppucontrol0] = a
-    x = [0x1]
-    //Name table = X - 1.
+func clear_nametable do
+    let dest = 0x1
+    let fill = 0x0
+
+    // Reset PPU address latch.
+    x = [nes.ppu.status]
+    // PPU increment = 1.
+    [ppucnt0zp] = [ppucnt0zp] & 0xfb via a
+    // Store control bits in PPU.
+    [nes.ppu.ctrl] = a
+
+    // nametable index = [dest] - 1.
+    x = [dest]
     x--
-    //get high PPU address.  pointer table at $C19F.
-    a = [hipputable:x]
-    [ppuaddress] = a
-    //Set PPU start address (High byte first).
-    a = 0x0
-    [ppuaddress] = a
-    //Prepare to loop 4 times.
+    // Set PPU address.
+    [nes.ppu.address] = [ppu_high_address_table:x] via a
+    [nes.ppu.address] = 0x0 via a
+    
+    // Loop until the desired name table is cleared.
+    // Also clear the associated attribute table.
     x = 0x4
-    //Inner loop value.
     y = 0x0
-    //Fill-value.
-    a = [0x0]
+    a = [fill]
     loop
-        [ppuioreg] = a
+        [nes.ppu.data] = a
         y--
-        //Loops until the desired name table is cleared.-->
         continue when ~zero
-        //It also clears the associated attribute table.
         x--
         until zero
     end
@@ -418,36 +405,20 @@ end
 
 //The following table is used by the above routine for finding
 //the high byte of the proper name table to clear.
-
-def hipputable:
-
-    //Name table 0.
-    byte: 0x20
-    //Name table 1.
-    byte: 0x24
-    //Name table 2.
-    byte: 0x28
-    //Name table 3.
-    byte: 0x2c
+def ppu_high_address_table: byte: 0x20, 0x24, 0x28, 0x2C
 
 //-------------------------------------[ Erase all sprites ]------------------------------------------
 
-def eraseallsprites:
-
-    y = 0x2
-    //Loads locations $00 and $01 with -->
-    [0x1] = y
-    //#$00 and #$02 respectively
-    y = 0x0
-    [0x0] = y
+def clear_all_sprites:
+    // Stores 0xF0 in memory addresses 0x0200 thru 0x02FF.
+    [0x1] = 0x02 via y
+    [0x0] = 0x00 via y
     y = 0x0
     a = 0xf0
-def _0010:
-    //Stores #$F0 in memory addresses $0200 thru $02FF.
-    [[0x0]:y] = a
-    y++
-    //Loop while more sprite RAM to clear.
-    goto _0010 when ~zero
+    loop
+        [[0x0]:y] = a
+        y++
+    until zero end
     a = [gamemode]
     //Exit subroutine if GameMode=Play(#$00)
     goto exit101 when zero
@@ -455,7 +426,6 @@ def _0010:
     goto decspriteycoord
 
 def exit101:
-
     //Return used by subroutines above and below.
     return
 
@@ -466,7 +436,6 @@ def exit101:
 //sprite to the bottom right of the screen and uses a blank graphic for the sprite.
 
 def removeintrosprites:
-
     //Start at address $200.
     y = 0x2
     [0x1] = y
@@ -581,11 +550,11 @@ def readonepad:
     //These lines strobe the -->
     y = 0x1
     //joystick to enable the -->
-    [cpujoypad1] = y
+    [nes.joy.out] = y
     //program to read the -->
     y--
     //buttons pressed.
-    [cpujoypad1] = y
+    [nes.joy.out] = y
     
     //Do 8 buttons.
     y = 0x8
@@ -593,7 +562,7 @@ def _0016:
     //Store A.
     push a
     //Read button status. Joypad 1 or 2.
-    a = [cpujoypad1:x]
+    a = [nes.joy.in1:x]
     //Store button press at location $00.
     [0x0] = a
     //Move button push to carry bit.
@@ -664,7 +633,7 @@ def _0019:
 //when the game is started, when Samus takes a special item, and when GAME
 //OVER is displayed, to mention a few examples.
 
-def updatetimer:
+def update_timer:
 
     //First timer to decrement is Timer2.
     x = 0x1
@@ -731,12 +700,12 @@ def chooseroutine:
 def writescroll:
 
     //Reset scroll register flip/flop
-    a = [ppustatus]
+    a = [nes.ppu.status]
     a = [scrollx]
-    [ppuscroll] = a
+    [nes.ppu.scroll] = a
     //X and Y scroll offsets are loaded serially.
     a = [scrolly]
-    [ppuscroll] = a
+    [nes.ppu.scroll] = a
     return
 
 //----------------------------------[ Add y index to stored addresses ]-------------------------------
@@ -848,11 +817,11 @@ def _001D:
 def ppuwrite:
 
     //Set high PPU address.
-    [ppuaddress] = a
+    [nes.ppu.address] = a
     y++
     a = [[0x0]:y]
     //Set low PPU address.
-    [ppuaddress] = a
+    [nes.ppu.address] = a
     y++
     //Get data byte containing rep length & RLE status.
     a = [[0x0]:y]
@@ -881,7 +850,7 @@ def _001E:
     //Get data byte.
     a = [[0x0]:y]
     //Write to PPU.
-    [ppuioreg] = a
+    [nes.ppu.data] = a
     //Decrease loop counter.
     x--
     //Keep going until X=0.
@@ -895,7 +864,7 @@ def _001E:
 def processppustring:
 
     //Reset PPU address flip/flop.
-    x = [ppustatus]
+    x = [nes.ppu.status]
     y = 0x0
     a = [[0x0]:y]
     //If A is non-zero, PPU data string follows,-->
@@ -917,7 +886,7 @@ def setppuinc:
     //else PPU increment = 1.
     a = a & 0xfb
 def _001F:
-    [ppucontrol0] = a
+    [nes.ppu.ctrl] = a
     [ppucnt0zp] = a
     //Restore A.
     a = pop
@@ -1256,10 +1225,10 @@ def screenon:
 def writeppuctrl:
 
     a = [ppucnt0zp]
-    [ppucontrol0] = a
+    [nes.ppu.ctrl] = a
     //Update PPU control registers.
     a = [ppucnt1zp]
-    [ppucontrol1] = a
+    [nes.ppu.mask] = a
     a = [mirrorcntrl]
     //($C4D9)Setup vertical or horizontal mirroring.
     call prepppumirror
@@ -1285,7 +1254,7 @@ def screennmioff:
     a = a & 0x7f
     [ppucnt0zp] = a
     //Actually load PPU register with NMI off value.
-    [ppucontrol0] = a
+    [nes.ppu.ctrl] = a
     return
 
 //The following routine does not appear to be used.
@@ -1295,7 +1264,7 @@ def screennmioff:
     a = a | 0x80
     //Write PPU control register 0 and PPU status byte.
     [ppucnt0zp] = a
-    [ppucontrol0] = a
+    [nes.ppu.ctrl] = a
     //Turn sprites and screen on.
     a = [ppucnt1zp]
     a = a | 0x1e
@@ -1309,7 +1278,7 @@ def vboffandhorzwrite:
     a = a & 0x7b
 def _002F:
     //Save new values in the PPU control register-->
-    [ppucontrol0] = a
+    [nes.ppu.ctrl] = a
     //and PPU status byte.
     [ppucnt0zp] = a
     return
@@ -1317,7 +1286,7 @@ def _002F:
 def nmion:
 
 def _0030:
-    a = [ppustatus]
+    a = [nes.ppu.status]
     //Wait for end of VBlank.
     a = a & 0x80
     goto _0030 when ~zero
@@ -1421,57 +1390,38 @@ def prepppumirror:
 //switch has been issued, and must be performed. SwitchPending then contains
 //the bank to switch to, plus one.
 
-def checkswitch:
-
+def check_bank_switch:
     y = [switchpending]
     //Exit if zero(no bank switch issued). else Y contains bank#+1.
     goto _0032 when zero
     //($C4E8)Perform bank switch.
-    call switchok
+    call perform_bank_switch
     //($C510)Initialize bank switch data.
-    goto gobankinit
+    goto init_bank
 
-def switchok:
-
+def perform_bank_switch:
     //Reset(so that the bank switch won't be performed-->
-    a = 0x0
     //every succeeding frame too).
-    [switchpending] = a
+    [switchpending] = 0 via a
     //Y now contains the bank to switch to.
     y--
     [currentbank] = y
 
-def romswitch:
-
-    a = y
+def switch_rom_bank:
     //Bank to switch to is stored at location $00.
-    [0x0] = a
+    [0x0] = y via a
     //Load upper two bits for Reg 3 (they should always be 0).
-    a = [switchupperbits]
     //Extract bits 3 and 4 and add them to the current-->
-    a = a & 0x18
     //bank to switch to.
-    a = a | [0x0]
     //Store any new bits set in 3 or 4(there should be none).
-    [switchupperbits] = a
+    [switchupperbits] = [switchupperbits] & 0x18 | [0x0] via a
 
 //Loads the lower memory page with the bank specified in A.
-
 def mmcwritereg3:
-
-    //Write bit 0 of ROM bank #.
-    [mmc1reg3] = a
-    a = a >> 1
-    //Write bit 1 of ROM bank #.
-    [mmc1reg3] = a
-    a = a >> 1
-    //Write bit 2 of ROM bank #.
-    [mmc1reg3] = a
-    a = a >> 1
-    //Write bit 3 of ROM bank #.
-    [mmc1reg3] = a
-    a = a >> 1
-    //Write bit 4 of ROM bank #.
+    unroll 4 do
+        [mmc1reg3] = a
+        a = a >> 1
+    end
     [mmc1reg3] = a
     //Restore A with current bank number before exiting.
     a = [0x0]
@@ -1479,40 +1429,17 @@ def _0032:
     return
 
 //Calls the proper routine according to the bank number in A.
-
-def gobankinit:
-
+def init_bank:
     //*2 For proper table offset below.
-    a = a << 1
-    y = a
-    a = [bankinittable:y]
+    y = a << 1 via a
     //Load appropriate subroutine address into $0A and $0B.
-    [0xa] = a
-    a = [bankinittable+1:y]
-    [0xb] = a
+    [0xa] = [init_bank_table:y] via a
+    [0xb] = [init_bank_table+1:y] via a
     //Jump to appropriate initialization routine.
     goto [0xa]
 
-def bankinittable:
-
-    //($C531)Initialize bank 0.
-    word: initbank0
-    //($C552)Initialize bank 1.
-    word: initbank1
-    //($C583)Initialize bank 2.
-    word: initbank2
-    //($C590)Initialize bank 3.
-    word: initbank3
-    //($C5B6)Initialize bank 4.
-    word: initbank4
-    //($C5C3)Initialize bank 5.
-    word: initbank5
-    //($C45C)Rts
-    word: exitsub
-    //($C45C)Rts
-    word: exitsub
-    //($C45C)Rts
-    word: exitsub
+def init_bank_table:
+    word: initbank0, initbank1, initbank2, initbank3, initbank4, initbank5, exitsub, exitsub, exitsub
 
 //Title screen memory page.
 
@@ -1530,7 +1457,7 @@ def initbank0:
     //($A93E)Copy game map from ROM to cartridge RAM $7000-$73FF
     call copymap
     //($C158)Erase name table data.
-    call clearnametables
+    call clear_all_nametables
 
     y = 0xa0
 def _0033:
@@ -1573,7 +1500,7 @@ def initbank1:
 def _0034:
     y = 0x0
     //($C4EF)Load Brinstar memory page into lower 16Kb memory.
-    call romswitch
+    call switch_rom_bank
     //($C604)Load Brinstar GFX.
     call initbrinstargfx
     //($C487)Turn on VBlank interrupts.
@@ -2037,17 +1964,17 @@ def _0039:
     //ROM bank containing the GFX data.
     y = [0x0]
     //($C4EF)Switch to that bank.
-    call romswitch
+    call switch_rom_bank
     a = [ppucnt0zp]
     a = a & 0xfb
     //Set the PPU to increment by 1.
     [ppucnt0zp] = a
-    [ppucontrol0] = a
+    [nes.ppu.ctrl] = a
     //($C7D5)Copy graphics into pattern tables.
     call copygfxblock
     y = [currentbank]
     //($C4FE)Switch back to the "old" bank.
-    goto romswitch
+    goto switch_rom_bank
 
 //Writes tile data from ROM to VRAM, according to the gfx header data
 //contained in $00-$06.
@@ -2063,15 +1990,15 @@ def gfxcopyloop:
 
     a = [0x4]
     //Set PPU to proper address for GFX block write.
-    [ppuaddress] = a
+    [nes.ppu.address] = a
     a = [0x3]
-    [ppuaddress] = a
+    [nes.ppu.address] = a
     //Set offset for GFX data to 0.
     y = 0x0
 def _003A:
     a = [[0x1]:y]
     //Copy GFX data byte from ROM to Pattern table.
-    [ppuioreg] = a
+    [nes.ppu.data] = a
     //Decrement low byte of data length.
     [0x5]--
     //Branch if high byte does not need decrementing.
@@ -2115,11 +2042,11 @@ def areainit:
     //Appears to never be accessed.
     [abstatus] = a
     //($C1A3)Clear all sprite info.
-    call eraseallsprites
+    call clear_all_sprites
     //Prepare to load Brinstar memory page.
     a = 0x10
     //($CA18)Check to see if ok to switch lower memory page.
-    call isenginerunning
+    call check_engine_running
 
 //------------------------------------------[ MoreInit ]---------------------------------------------
 
@@ -2164,9 +2091,9 @@ def _003F:
     //($C439)Turn off Background and visibility.
     call screenoff
     //($C158)Clear screen data.
-    call clearnametables
+    call clear_all_nametables
     //($C1A3)Erase all sprites from sprite RAM.
-    call eraseallsprites
+    call clear_all_sprites
     //($C8BB)
     call destroyenemies
 
@@ -2215,21 +2142,21 @@ def _0040:
     //PPU increment = 1
     a = a & 0xfb
     [ppucnt0zp] = a
-    [ppucontrol0] = a
+    [nes.ppu.ctrl] = a
     //reset PPU addr flip/flop
-    y = [ppustatus]
+    y = [nes.ppu.status]
 
 // Copy room RAM #0 ($6000) to PPU Name Table #0 ($2000)
 
     y = 0x20
-    [ppuaddress] = y
+    [nes.ppu.address] = y
     y = 0x0
-    [ppuaddress] = y
+    [nes.ppu.address] = y
     //prepare to write 4 pages
     x = 0x4
 def _0041:
     a = [[0x0]:y]
-    [ppuioreg] = a
+    [nes.ppu.data] = a
     y++
     goto _0041 when ~zero
     [0x1]++
@@ -2520,7 +2447,7 @@ def gopassword:
 def samusintro:
 
     //($C1A3)Clear all sprites off screen.
-    call eraseallsprites
+    call clear_all_sprites
     //Load Samus' fade in status.
     y = [objaction]
     a = [timer3]
@@ -2582,56 +2509,42 @@ def samusfadeintimetbl:
 
 //---------------------------------[ Check if game engine running ]-----------------------------------
 
-def isenginerunning:
-
-def game_engine_page_CA18:
-    //If Samus is fading in or the wait timer is-->
+def check_engine_running:
     y = [mainroutine]
-    //active, return from routine.
-    compare y to 0x7
-    goto _004E when zero
-    //Is game engine running?
-    compare y to 0x3
-    //If yes, branch to SwitchBank.
-    goto _004F when zero
-def _004E:
-    //Exit if can't switch bank.
+    // Unless Samus is fading in or the wait timer is active,
+    if compare y to 0x7 is ~= then
+        // Is game engine running?
+        compare y to 0x3
+        // If yes, switch banks.
+        goto switch_bank when zero
+    end
+    // Exit if can't switch bank.
     return
 
 //-----------------------------------------[ Switch bank ]--------------------------------------------
 
 //Switch to appropriate area bank
-
-def switchbank:
-
-def _004F:
+def switch_bank:
     //Save current area Samus is in.
     [inarea] = a
     a = a & 0xf
     //Use 4 LSB to load switch pending offset from BankTable table.
     y = a
     //Base is $CA30.
-    a = [banktable:y]
+    a = [switch_bank_table:y]
     //Store switch data.
     [switchpending] = a
     //($C4DE)Switch lower 16KB to appropriate memory page.
-    goto checkswitch
+    goto check_bank_switch
 
 //Table used by above subroutine.
 //Each value is the area bank number plus one.
-
-def banktable:
-
-    //Brinstar.
-    byte: 0x2
-    //Norfair.
-    byte: 0x3
-    //Kraid hideout.
-    byte: 0x5
-    //Tourian.
-    byte: 0x4
-    //Ridley hideout.
-    byte: 0x6
+def switch_bank_table:
+    byte: 0x2 //Brinstar.
+    byte: 0x3 //Norfair.
+    byte: 0x5 //Kraid hideout.
+    byte: 0x4 //Tourian.
+    byte: 0x6 //Ridley hideout.
 
 //----------------------------------[ Saved game routines (not used) ]--------------------------------
 
@@ -2822,9 +2735,7 @@ def _005C:
 
 //Table used by above subroutine to find base address to load saved game data from. The slot 0
 //starts at $69B4, slot 1 starts at $69F4 and slot 2 starts at $6A34.
-
 def saveddatatable:
-
     //($69B4)Base for save game slot 0.
     word: itmehistory
     //($69B4)Base for save game slot 1.
@@ -2836,7 +2747,6 @@ def saveddatatable:
 
 //Determine what type of ending is to be shown, based on Samus' age
 def chooseending:
-
     y = 0x1
 def _005D:
     //If SamusAge+2 anything but #$00, load worst-->
@@ -2867,7 +2777,6 @@ def _005F:
 
 //Table used by above subroutine to determine ending type.
 def agetable:
-
     //Max. 37 hours
     byte: 0x7a
     //Max. 6.7 hours
@@ -2880,23 +2789,19 @@ def agetable:
 //--------------------------------[ Clear screen data (not used) ]------------------------------------
 
 def clearscreendata:
-
     //($C439)Turn off screen.
     call screenoff
-    a = 0xff
-    //Prepare to fill nametable with #$FF.
-    [0x0] = a
-    //($C175)Clear selected nametable.
-    call clearnametable
+    //Fill current nametable with #$FF.
+    [0x0] = 0xff via a
+    call clear_nametable
     //($C1A3)Clear sprite data.
-    goto eraseallsprites
+    goto clear_all_sprites
 
 //----------------------------------------------------------------------------------------------------
 
 // ===== THE REAL GUTS OF THE GAME ENGINE! =====
 
 def updateworld:
-
     //Set start of sprite RAM to $0200.
     x = 0x0
     [spritepagepos] = x
@@ -5568,7 +5473,7 @@ def _00EE:
     a = y
 def _00EF:
     a = a | 0x10
-    call game_engine_page_CA18
+    call check_engine_running
     a = [paltoggle]
     a = a ^ 0x7
     [paltoggle] = a
@@ -13235,14 +13140,14 @@ def reset:
     decimal = 0
     x = 0x0
     //Clear PPU control registers
-    [ppucontrol0] = x
-    [ppucontrol1] = x
+    [nes.ppu.ctrl] = x
+    [nes.ppu.mask] = x
 def _02AA:
-    a = [ppustatus]
+    a = [nes.ppu.status]
     //Wait for VBlank
     goto _02AA when ~negative
 def _02AB:
-    a = [ppustatus]
+    a = [nes.ppu.status]
     goto _02AB when ~negative
     a = a | 0xff
     //Reset MMC1 chip
