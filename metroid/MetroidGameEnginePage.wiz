@@ -732,46 +732,23 @@ def _001C:
 
 //--------------------------------[ Simple divide and multiply routines ]-----------------------------
 
-def adiv32:
- 
-    //Divide by 32.
-    a = a >> 1
+// Divide by 32.
+def adiv32: a = a >> 1 // fallthrough
+// Divide by 16.
+def adiv16: a = a >> 1 // fallthrough
+// Divide by 8.
+func adiv8 do
+    a = a >> 3
+end
 
-def adiv16:
- 
-def game_engine_page_C2BF:
-    //Divide by 16.
-    a = a >> 1
-
-def adiv8:
-  
-def game_engine_page_C2C0:
-    //Divide by 8.
-    a = a >> 1
-    a = a >> 1
-    //Divide by shifting A right.
-    a = a >> 1
-    return
-
-def amul32:
- 
-    //Multiply by 32.
-    a = a << 1
-
-def amul16:
- 
-def game_engine_page_C2C5:
-    //Multiply by 16.
-    a = a << 1
-
-def amul8:
-
-    //Multiply by 8.
-    a = a << 1
-    a = a << 1
-    //Multiply by shifting A left.
-    a = a << 1
-    return
+// Multiply by 32.
+def amul32: a = a << 1 // fallthrough
+// Multiply by 16.
+def amul16: a = a << 1 // fallthrough
+// Multiply by 8.
+func amul8 do
+    a = a << 3
+end
 
 //-------------------------------------[ PPU writing routines ]---------------------------------------
 

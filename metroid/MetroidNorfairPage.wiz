@@ -11,7 +11,7 @@
 //
 //Commented by Dirty McDingus (nmikstas@yahoo.com)
 //Disassembled using TRaCER by YOSHi
-//Can be reassembled using Ophis.
+//Can be reassembled using wiz.
 //Last updated: 3/9/2010
 
 //Norfair (memory page 2)
@@ -1736,7 +1736,7 @@ def norfair_page_8C1D:
     [0x8] = a
     y = [0x50]
     a = x
-    call game_engine_page_C2C5
+    call amul16
     goto norfair_page_8C4C when ~carry
     y--
 def norfair_page_8C4C:
@@ -1780,7 +1780,7 @@ def norfair_page_8C84:
     a = [0x91]
     goto norfair_page_8CA7 when zero
     a = x
-    call game_engine_page_C2BF
+    call adiv16
     a = a ^ [0x91]
     a = a >> 1
     goto norfair_page_8CA7 when ~carry
@@ -1796,7 +1796,7 @@ def norfair_page_8CA7:
     compare a to 0x3
     goto norfair_page_8CC3 when ~zero
     a = x
-    call game_engine_page_C2C5
+    call amul16
     goto norfair_page_8CC0 when carry
     call game_engine_page_CC07
     goto norfair_page_8CC3 when ~zero
@@ -1839,7 +1839,7 @@ def norfair_page_8CFD:
     a = 0x50
     [0x2] = a
     a = x
-    call game_engine_page_C2BF
+    call adiv16
     a = a & 0x1
     y = a
     a = [norfair_page_8D3A:y]
@@ -1861,7 +1861,7 @@ def norfair_page_8D19:
     goto norfair_page_8D19 when ~zero
     x = [pageindex]
     a = x
-    call game_engine_page_C2C0
+    call adiv8
     a = a & 0x6
     y = a
     a = [0x4]
