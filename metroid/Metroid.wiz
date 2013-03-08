@@ -1,0 +1,45 @@
+let K = 1024
+
+bank header : rom * 16
+bank title_page : rom * 16 * K
+bank brinstar_page : rom * 16 * K
+bank norfair_page : rom * 16 * K
+bank tourian_page : rom * 16 * K
+bank kraid_page : rom * 16 * K
+bank ridley_page : rom * 16 * K
+bank graphics_page : rom * 16 * K
+bank game_engine_page : rom * 16 * K
+
+
+in header, 0x00:
+    do
+        let mirroring = 1
+        let battery = 0
+        let fourscreen = 0
+        let mapper = 1
+
+        // 0..3: "NES" followed by MS-DOS end-of-file marker.
+        byte * 4: "NES", 0x1A
+        // 4: Number of 16K PRG ROM banks
+        byte: 8
+        // 5: Number of 8K CHR ROM banks
+        byte: 0
+        // 6: The "Flags 6" byte, skip the 'trainer' flag for now.
+        byte: (mirroring) | (battery << 1) | (fourscreen << 3) | ((mapper & 0xF) << 4)
+        // 7: The "Flags 7" byte, just the mapper part though.
+        byte: (mapper >> 4)
+        // 8: Number of 8K PRG RAM banks -- for now just write a 0, which implies 8KB PRG RAM at most.
+        byte: 0
+        // 9..15: Ignore other flag fields. Zero-pad this header to 16 bytes.
+        byte: 0, 0, 0, 0, 0, 0, 0
+    end
+    
+include "MetroidNorfairPage.wiz"
+include "MetroidRidleyPage.wiz"
+include "MetroidDefines.wiz"
+include "MetroidBrinstarPage.wiz"
+include "MetroidTourianPage.wiz"
+include "MetroidKraidPage.wiz"
+include "MetroidGraphicsPage.wiz"
+include "MetroidTitlePage.wiz"
+include "MetroidGameEnginePage.wiz"

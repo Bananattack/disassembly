@@ -1,0 +1,1489 @@
+// -------------------
+// METROID source code
+// -------------------
+// MAIN PROGRAMMERS
+//     HAI YUKAMI
+//   ZARU SOBAJIMA
+//    GPZ SENGOKU
+//    N.SHIOTANI
+//     M.HOUDAI
+// (C) 1986 NINTENDO
+//
+//Disassembled, reconstructed and commented
+//by SnowBro [Kent Hansen] <kentmhan@online.no>
+//Continued by Dirty McDingus (nmikstas@yahoo.com)
+//Can be reassembled using Ophis.
+//A work in progress.
+//Last updated: 3/9/2010
+
+//Metroid defines.
+
+//-------------------------------------------[ Defines ]----------------------------------------------
+
+    //Points to address to jump to when choosing-->
+    let codeptr = 0x0C
+//      CodePtr+1        $0D    //a routine from a list of routine addresses.
+
+//The bits of the change and status addresses represent the following joypad buttons:
+//bit 7=A, bit 6=B, bit 5=SELECT, bit 4=START, bit 3=Up, bit 2=Down, bit 1=Left, bit 0=Right.
+
+    //These addresses store any button changes-->
+    let joy1change = 0x12
+    //that happened since last frame(pads 1 and 2).
+    let joy2change = 0x13
+    //These two addresses store all buttons-->
+    let joy1status = 0x14
+    //currently being pressed on the two controllers.
+    let joy2status = 0x15
+    //These two addresses store any buttons that need-->
+    let joy1retrig = 0x16
+    //to retrigger after being held down by player.
+    let joy2retrig = 0x17
+    //These two addresses are counters that control-->
+    let retrigdelay1 = 0x18
+    //The retriggering of held down buttons.
+    let retrigdelay2 = 0x19
+
+    //0=NMI in progress. anything else, NMI not in progress.
+    let nmistatus = 0x1A
+    //1=not PPU data pending, 1=data pending.
+    let ppudatapending = 0x1B
+    //Pending palette data. Palette # = PalDataPending - 1.
+    let paldatapending = 0x1C
+    //0 = Game is playing, 1 = At title/password screen
+    let gamemode = 0x1D
+    //5 = Game paused, 3 = Game engine running
+    let mainroutine = 0x1E
+    //Stores title routine number currently running.
+    let titleroutine = 0x1F
+    //Stores next routine to jump to after WaitTimer expires.
+    let nextroutine = 0x20
+    //0 thru 7. current memory page in lower memory block.
+    let currentbank = 0x23
+    //Switch memory page. Page # = SwitchPending - 1.
+    let switchpending = 0x24
+    //Stores bits to be loaded into MMC1 Register 0.
+    let mmcreg0cntrl = 0x25
+    //Used to store bits 3 and 4 for MMC1 register 3.  Bits-->
+    let switchupperbits = 0x28
+                    //3 and 4 should always be 0 under normal conditions.
+
+    //Count down from 9 to 0. Decremented every frame.
+    let timerdelay = 0x29
+    //Decremented every frame after set.
+    let timer1 = 0x2A
+    //Decremented every frame after set.
+    let timer2 = 0x2B
+    //Decremented every 10 frames after set.
+    let timer3 = 0x2C
+
+    //Increments every frame(overflows every 256 frames).
+    let framecount = 0x2D
+
+    //Random numbers used-->
+    let randomnumber1 = 0x2E
+    //throughout the game.
+    let randomnumber2 = 0x2F
+
+    //Written to, but never accessed.
+    let sparemem30 = 0x30
+    //#$00=Game running, #$01=Game paused.
+    let gamepaused = 0x31
+
+    //Low byte of room pointer address.
+    let roomptr = 0x33
+//      RoomPtr+1        $34    //High byte of room pointer address.
+
+    //Low bute of structure pointer address.
+    let structptr = 0x35
+//      StructPtr+1        $36    //High byte of structure pointer address.
+                
+    //Low byte of pointer to current position in room RAM.
+    let cartramworkptr = 0x37
+//      CartRAMWorkPtr+1        $38    //High byte of pointer to current position in room RAM.
+                    //The CartRAMWorkPtr points to the current memory address-->
+                    //in the room RAM that is being loaded.
+
+    //Low byte of pointer to room RAM (#$00).
+    let cartramptr = 0x39
+//      CartRAMPtr+1        $3A    //High byte of pointer to room RAM (#$60 or #$64).
+                    //Room RAM is a screen buffer where the objects that make-->
+                    //up a room are loaded.  There are two room RAM memory-->
+                    //areas and they are the exact same size as the two name-->
+                    //tables and attribute tables in the PPU. Once the room-->
+                    //RAM conatins a completed room in it, the entire contents-->
+                    //of the room RAM is loaded into the PPU. 
+
+    //Low byte of start of room pointer table.
+    let roomptrtable = 0x3B
+//      RoomPtrTable+1        $3C    //High byte of start of room pointer table.
+
+    //Low byte of start of structure pointer table.
+    let structptrtable = 0x3D
+//      StructPtrTable+1        $3E    //High byte of structure pointer table.
+
+    //Low byte of pointer into macro definitions.
+    let macroptr = 0x3F
+//      MacroPtr+1        $40    //High byte of pointer into macro definitions.
+
+    //Low byte of pointer into address table to find enemy animations.
+    let enmyframetbl1ptr = 0x41
+//      EnmyFrameTbl1Ptr+1    $42    //High byte of pointer into address table to find enemy animations.
+
+    //Same as above except in a second table because there are-->
+    let enmyframetbl2ptr = 0x43
+//      EnmyFrameTbl2Ptr+1    $44    //too many entries to fit into one table.
+
+    //Low byte of pointer into enemy frame placement table.
+    let enmyplacetblptr = 0x45
+//      EnmyPlaceTblPtr+1    $46    //High byte of pointer into enemy frame placement table.
+
+    //Low byte of start of EnemyAnimIndexTbl.
+    let enemyanimptr = 0x47
+//      EnemyAnimPtr+1        $48    //High byte of start of EnemyAnimIndexTbl.
+
+    //0=Up, 1=Down, 2=Left, 3=Right.
+    let scrolldir = 0x49
+
+    //Stores ScrollDir when room is initially loaded.
+    let tempscrolldir = 0x4A
+
+    //Index to object data.
+    let pageindex = 0x4B
+                    //#$D0, #$E0, #$F0 = projectile indices(including bombs).
+                    //
+    //#$00 or #$08. Added to PowerUpType addresses to determine if-->
+    let itemindex = 0x4C
+                    //the first or second item slot is being checked. 
+
+    //0 = Right, 1 = Left.
+    let samusdir = 0x4D
+    //Direction Samus passed through door.
+    let samusdoordir = 0x4E
+    //Current y position on world map.
+    let mapposy = 0x4F
+    //Current x position on world map.
+    let mapposx = 0x50
+    //Samus x position on screen.
+    let samusscrx = 0x51
+    //Samus y position on screen.
+    let samusscry = 0x52
+    let walksounddelay = 0x53
+    //1=Samus object being accessed, 0=not Samus.
+    let issamus = 0x55
+    //0=Not in door, 1=In right door, 2=In left door, 3=Scroll up-->
+    let doorstatus = 0x56
+                    //4=Scroll down, 5=Exit door, MSB set=Door entered. If value-->
+                    //is 3 or 4, a door was entered while in a verticle shaft and-->
+                    //the door was not centered on the screen and up or down-->
+                    //scrolling needs to occur before scrolling to the next room.
+    //#$01=Entered right hand door from horizontal area.-->
+    let doorscrollstatus = 0x57
+                    //#$02=Entered left hand door from horizontal area.-->
+                    //#$03=Entered door from verticle shaft and room needs to-->
+                    //be centered before horizontal scrolling. #$04=Entered-->
+                    //door from verticle shaft and room was already centered.
+    //The upper 4 bits store either 1 or 2. If 1 is stored(bit 4-->
+    let samusdoordata = 0x58
+                    //set), the scrolling after Samus exits the door is toggled.-->
+                    //If 2 is stored(bit 5 set), the scrolling is set to-->
+                    //horizontal scrolling after Samus exits the door. This-->
+                    //happens mostly in item rooms. The lower 4 bits store Samus'-->
+                    //action status as she enters the door. This is used to set-->
+                    //Samus' action after she exits and keeps her looking the same.
+    //Number of frames to delay when Samus entering/exiting doors.
+    let doordelay = 0x59
+    //Room number currently being loaded.
+    let roomnumber = 0x5A
+    //Index into sprite RAM used to load object sprite data.
+    let spritepagepos = 0x5B
+    //#$01=Samus in lava, #$00=She is not.
+    let samusinlava = 0x64
+    //Counts such things as object explosion time.
+    let objectcounter = 0x65
+    //Attrib. table info for room object(#$00 thru #$03).
+    let objectpal = 0x67
+    let roompal = 0x68
+    let tempx = 0x69
+    let tempy = 0x6A
+    //Controls object properties such as mirroring and color-->
+    let objectcntrl = 0x6B
+                    //bits. Bit 4 controls object mirroring.
+
+    //The following two addresses are used to keep track of the-->
+    let dooronnametable3 = 0x6C
+    //doors loaded on the name tables. The information is used-->
+    let dooronnametable0 = 0x6D
+                    //in the GetRoomNum routine to prevent the loading of a-->
+                    //room behind a door when scrolling horizontally. This has-->
+                    //the effect of stopping scrolling until Samus walks through-->
+                    //the door. #$01=Left door on name table. #$02=right door-->
+                    //on name table. #$03 two doors on the same name table.-->
+                    //#$00 is possible in $6D if 2 doors are on name table 0-->
+                    //while vertically scrolling.
+
+    //Amount to add/subtract from HealthLo.
+    let healthlochange = 0x6E
+    //Amount to add/subtract from HealthHi.
+    let healthhichange = 0x6F
+
+    let samusblink = 0x70
+    //#$01=Projectile update in process. #$00=not in process.
+    let updatingprojectile = 0x71
+    //#$00=Push Samus left when hit, #$01=Push right, #$FF=No push.
+    let damagepushdirection = 0x72
+    //#$10(or #$00)=Brinstar, #$11=Norfair, #$12=Kraid hideout,-->
+    let inarea = 0x74
+                    //#$13=Tourian, #$14=Ridley hideout.
+
+    //Initialized to #$FF in AreaInit. Not used.
+    let sparemem75 = 0x75
+    let paltoggle = 0x76
+
+    //#$00=Item room music not playing.
+    let itemroommusicstatus = 0x79
+                    //#$01=Play item room music.
+                    //#$80=Stop item room music once door scroll complete. 
+                    //#$81=Item room music already playing. Don't restart.
+
+    //#$01=Samus standing on frozen enemy, #$00=she is not.
+    let onfrozenenemy = 0x7D
+
+//--------------------------------------[ End routine specific ]--------------------------------------
+
+    //0=don't write end message, 1=write end message.
+    let endmsgwrite = 0x7A
+    //0=credits not rolling, 1=credits rolling.
+    let iscredits = 0x7B
+    //Used to indicate when Samus sprite load complete.
+    let spritebytecounter = 0x7C
+    //Index to proper Samus sprite graphics at end game.
+    let spritepointerindex = 0x7D
+    //#$00.  Attribute byte of some sprites.
+    let spriteattribbyte = 0x7E
+    //Index for finding count number for ClrChangeCounter.
+    let colorcntindex = 0x7F
+    //Stores current page of credits(#$00 thru #$06).
+    let creditpagenumber = 0x80
+    //0=show end message, 1=erase end message.
+    let hideshowendmsg = 0x81
+    //When=#$00, change end Samus sprite colors.
+    let clrchangecounter = 0x82
+    //Address pointer to Samus hand waving sprites in end.
+    let wavespritepointer = 0x83
+    //Stores length of wave sprite data (#$10).
+    let wavespritecounter = 0x84
+
+//----------------------------------------------------------------------------------------------------
+
+    //#$01=Metroid on Samus, #$00=Metroid not on Samus.
+    let metroidonsamus = 0x92
+
+    //Maximum missiles power-ups that can be picked up. Randomly-->
+    let maxmissilepickup = 0x93
+                    //recalculated whenever Samus goes through a door.
+    //Maximum energy power-ups that can be picked up. Randomly-->
+    let maxenergypickup = 0x94
+                    //recalculated whenever Samus goes through a door.
+    //Number of missile power-ups currently collected by Samus-->
+    let currentmissilepickups = 0x95
+                    //Reset to 0 when Samus goes through a door.
+    //Number of energy power-ups currently collected by Samus-->
+    let currentenergypickups = 0x96
+                    //Reset to 0 when Samus goes through a door.
+
+    //#$00=Mother brain not in room, #$01=Mother brain in room,-->
+    let motherbrainstatus = 0x98
+                    //#$02=Mother brain hit, #$03=Mother brain dying-->
+                    //#$04=Mother brain dissapearing, #$05=Mother brain gone,-->
+                    //#$06=Time bomb set, #$07=Time bomb exploded,-->
+                    //#$08=Initialize mother brain,-->
+                    //#$09, #$0A=Mother brain already dead.
+    //Number of times mother brain has been hit. Dies at #$20.
+    let motherbrainhits = 0x99
+
+    //Written to in title routine and accessed by unsed routine.
+    let sparememb7 = 0xB7
+    //Written to in title routine and accessed by unsed routine.
+    let sparememb8 = 0xB8
+    //Written to in title routine, but never accessed.
+    let sparemembb = 0xBB
+
+    //This address holds an 8 frame delay. when the delay is up,-->
+    let first4slowcntr = 0xBC
+                    //The crosshair sprites double their speed.
+    //This address holds a 32 frame delay.  When the delay is-->
+    let second4delay = 0xBD
+                    //up, the second set of crosshair sprites start their movement.
+    //#$01=Second crosshair sprites active in intro.
+    let secondcrosshairsprites = 0xBF
+
+    //#$01=Flash screen during crosshairs routine.
+    let flashscreen = 0xC0
+    let paldataindex = 0xC1
+    //Index to palette data to flash screen during intro.
+    let screenflashpalindex = 0xC2
+    //Contains offset into IntroStarPntr table for twinkle effect.
+    let introstaroffset = 0xC3
+    //Index to palette data to fade items in and out during intro.
+    let fadedataindex = 0xC4
+
+    //Written to in title routine, but never accessed.
+    let sparememc5 = 0xC5
+    //#$00 thru #$04. Index to find cross sprite data.
+    let crossdataindex = 0xC6
+    //#$01=Draw cross on screen during crosshairs routine.
+    let drawcross = 0xC7
+    //Set to #$00 after sprite RAM load complete.
+    let spriteloadpending = 0xC8
+    let sparememc9 = 0xC9
+    //Written to in title routine, but never accessed.
+    let sparememcb = 0xCB
+    //Written to in title routine, but never accessed.
+    let sparememcc = 0xCC
+    //Written to in title routine, but never accessed.
+    let sparememcd = 0xCD
+    //Written to in title routine, but never accessed.
+    let sparememce = 0xCE
+    //Written to in title routine, but never accessed.
+    let sparememcf = 0xCF
+    //Written to in title routine, but never accessed.
+    let sparememd0 = 0xD0
+    //Written to in title routine, but never accessed.
+    let sparememd1 = 0xD1
+    //Written to in title routine, but never accessed.
+    let sparememd2 = 0xD2
+    //Written to in title routine, but never accessed.
+    let sparememd3 = 0xD3
+    //Written to in title routine, but never accessed.
+    let sparememd7 = 0xD7
+    //After all title routines run twice, restarts intro music.
+    let intromusicrestart = 0xD8
+    //Stores A and B button status in AreaInit. Never used.
+    let abstatus = 0xF0
+//                $F7
+
+    //If bit 3 is set, PPU set to horizontal mirroring-->
+    let mirrorcntrl = 0xFA
+                    //else if bit 3 is clear, PPU is set to vertical-->
+                    //mirroring. No other bits seem to matter.
+
+    //Y value loaded into scroll register.
+    let scrolly = 0xFC
+    //X value loaded into scroll register.
+    let scrollx = 0xFD
+    //Data byte to be loaded into PPU control register 1.
+    let ppucnt1zp = 0xFE
+    //Data byte to be loaded into PPU control register 0.
+    let ppucnt0zp = 0xFF
+
+    //Lower health digit in upper 4 bits.
+    let healthlo = 0x0106
+    //Upper health digit in lower 4 bits-->
+    let healthhi = 0x0107
+                                        //# of full tanks in upper 4 bits.
+    //Initiate power up music and delay after Kraid/Ridley killed.
+    let minibosskilldelay = 0x0108
+    //Initiate power up music and delay after item pickup.
+    let powerupdelay = 0x0109
+
+    //Lower byte of end game escape timer.
+    let endtimerlo = 0x010A
+    //Upper byte of end game escape timer.
+    let endtimerhi = 0x010B
+
+    //0=fire bullets, 1=fire missiles.
+    let missiletoggle = 0x010E
+
+//-----------------------------------------[ Sprite RAM ]---------------------------------------------
+
+    //$0200 thru $02FF
+    let sprite00ram = 0x0200
+    let sprite01ram = 0x0204
+    let sprite02ram = 0x0208
+    let sprite03ram = 0x020C
+    let sprite04ram = 0x0210
+    let sprite05ram = 0x0214
+    let sprite06ram = 0x0218
+    let sprite07ram = 0x021C
+    let sprite08ram = 0x0220
+    let sprite09ram = 0x0224
+    let sprite0aram = 0x0228
+    let sprite0bram = 0x022C
+    let sprite0cram = 0x0230
+    let sprite0dram = 0x0234
+    let sprite0eram = 0x0238
+    let sprite0fram = 0x023C
+    let sprite10ram = 0x0240
+    let sprite11ram = 0x0244
+    let sprite12ram = 0x0248
+    let sprite13ram = 0x024C
+    let sprite14ram = 0x0250
+    let sprite15ram = 0x0254
+    let sprite16ram = 0x0258
+    let sprite17ram = 0x025C
+    let sprite18ram = 0x0260
+    let sprite19ram = 0x0264
+    //These 256 bytes of memory are loaded into sprite
+    let sprite1aram = 0x0268
+    //RAM using the DMA sprite register $4014.
+    let sprite1bram = 0x026C
+    let sprite1cram = 0x0270
+    let sprite1dram = 0x0274
+    let sprite1eram = 0x0278
+    let sprite1fram = 0x027C
+    let sprite20ram = 0x0280
+    let sprite21ram = 0x0284
+    let sprite22ram = 0x0288
+    let sprite23ram = 0x028C
+    let sprite24ram = 0x0290
+    let sprite25ram = 0x0294
+    let sprite26ram = 0x0298
+    let sprite27ram = 0x029C
+    let sprite28ram = 0x02A0
+    let sprite29ram = 0x02A4
+    let sprite2aram = 0x02A8
+    let sprite2bram = 0x02AC
+    let sprite2cram = 0x02B0
+    let sprite2dram = 0x02B4
+    let sprite2eram = 0x02B8
+    let sprite2fram = 0x02BC
+    let sprite30ram = 0x02C0
+    let sprite31ram = 0x02C4
+    let sprite32ram = 0x02C8
+    let sprite33ram = 0x02CC
+    let sprite34ram = 0x02D0
+    let sprite35ram = 0x02D4
+    let sprite36ram = 0x02D8
+    let sprite37ram = 0x02DC
+    let sprite38ram = 0x02E0
+    let sprite39ram = 0x02E4
+    let sprite3aram = 0x02E8
+    let sprite3bram = 0x02EC
+    let sprite3cram = 0x02F0
+    let sprite3dram = 0x02F4
+    let sprite3eram = 0x02F8
+    let sprite3fram = 0x02FC
+
+//-----------------------------------------[ Object RAM ]---------------------------------------------
+
+//Samus RAM.
+    //Status of object. 0=object slot not in use.
+    let objaction = 0x0300
+    //Distance in pixels from object center to top or bottom.
+    let objrady = 0x0301
+    //Distance in pixels from object center to left or right side.
+    let objradx = 0x0302
+    //*2 = Index into FramePtrTable for current animation.
+    let animframe = 0x0303
+    //Number of frames to delay between animation frames.
+    let animdelay = 0x0304
+    //Restart index-1 when AnimIndex finished with last frame.
+    let animresetindex = 0x0305
+    //Current index into ObjectAnimIndexTbl.
+    let animindex = 0x0306
+    //0=Samus not on elevator, 1=Samus on elevator.
+    let samusonelevator = 0x0307
+    //MSB set=moving up(#$FA max), MSB clear=moving down(#$05 max).
+    let objvertspeed = 0x0308
+    //MSB set=moving lft(#$FE max), MSB clear=moving rt(#$01 max).
+    let objhorzspeed = 0x0309
+    //Samus hit by enemy.
+    let samushit = 0x030A
+    //1=Object on screen, 0=Object beyond screen boundaries.
+    let objectonscreen = 0x030B
+    //0=Object on nametable 0, 1=Object on nametable 3.
+    let objecthi = 0x030C
+    //Object y position in room(not actual screen position).
+    let objecty = 0x030D
+    //Object x position in room(not actual screen position).
+    let objectx = 0x030E
+    //Number of pixels vertically displaced from jump point.
+    let samusjumpdsplcmnt = 0x030F
+    //Verticle movement counter. Exponential change in speed.
+    let vertcntrnonlinear = 0x0310
+    //Horizontal movement counter. Exponential change in speed.
+    let horzcntrnonlinear = 0x0311
+    //Verticle movement counter. Linear change in speed.
+    let vertcntrlinear = 0x0312
+    //Horizontal movement counter. Linear change in speed.
+    let horzcntrlinear = 0x0313
+    //Value used in calculating vertical acceleration on Samus.
+    let samusgravity = 0x0314
+    //Value used in calculating horizontal acceleration on Samus.
+    let samushorzaccel = 0x0315
+    //Used to calc maximum horizontal speed Samus can reach.
+    let samushorzspeedmax = 0x0316
+
+//Elevator RAM.
+    //#$01=Elevator present, #$00=Elevator not present.
+    let elevatorstatus = 0x0320
+
+//Power-up item RAM.
+
+
+//-------------------------------------[ Title routine specific ]-------------------------------------
+
+    //Password write position (#$00 - #$17).
+    let passwordcursor = 0x0320
+    //Password character select row (#$00 - #$04).
+    let inputrow = 0x0321
+    //Password character select column (#$00 - #$0C).
+    let inputcolumn = 0x0322
+    //Does not appear to have a function.
+    let passwordstat00 = 0x0324
+    //0=START selected, 1=CONTINUE selected.
+    let startcontinue = 0x0325
+
+//------------------------------------------[ Enemy RAM ]---------------------------------------------
+
+    //Enemy y position in room.(not actual screen position).
+    let enyroompos = 0x0400
+    //Enemy x position in room.(not actual screen position).
+    let enxroompos = 0x0401
+//                $0402
+//                $0403
+//                $0404
+//                $0405
+    //Counts such things as explosion time.
+    let encounter = 0x0406
+//                $0407
+//                $0408
+    //Delay counter between enemy actions.
+    let endelay = 0x0409
+//                $040A
+    //Current hit points of enemy.
+    let enhitpoints = 0x040B
+//                $040C
+//                $040D
+//                $040E
+    //Bit 7 set=tough version of enemy, bit 6 set=mini boss.
+    let enspecialattribs = 0x040F
+
+//----------------------------------------------------------------------------------------------------
+
+//Tile respawning
+    let tileroutine = 0x0500
+    let tileanimframe = 0x0503
+    let tileanimdelay = 0x0504
+    let tileanimindex = 0x0506
+    let tiledelay = 0x0507
+    let tilewramlo = 0x0508
+    let tilewramhi = 0x0509
+    let tiletype = 0x050A
+
+//---------------------------------[ Sound engine memory addresses ]----------------------------------
+
+    //Temp storage for data of first address sound channel
+    let cntrl0data = 0xEA
+    //Desired address number in VolumeCntrlAdressTbl
+    let volumecntrladdress = 0xEB
+
+    //Loaded into SQ1Cntrl2 when playing music
+    let musicsq1periodlow = 0x0600
+    //Loaded into SQ1Cntrl3 when playing music
+    let musicsq1periodhigh = 0x0601
+
+    //0=Game not paused, 1=Game paused
+    let sfxpaused = 0x0602
+    //Plays PauseMusic SFX if less than #$12
+    let pausesfxstatus = 0x0603
+
+    //Loaded into SQ2Cntrl2 when playing music
+    let musicsq2periodlow = 0x0604
+    //Loaded into SQ2Cntrl3 when playing music
+    let musicsq2periodhigh = 0x0605
+
+    //1=data needs to be written, 0=no data to write
+    let writemultichanneldata = 0x0607
+
+    //Loaded into TriangleCntrl2 when playing music
+    let musictriperiodlow = 0x0608
+    //Loaded into TriangleCntrl3 when playing music
+    let misictriperiodhigh = 0x0609
+
+    //Stores triangle SFX period low for processing
+    let triangleperiodlow = 0x0610
+    //Stroes triangle SFX period high for processing
+    let triangleperiodhigh = 0x0611
+    //Stores triangle SFX change in period low
+    let trianglechangelow = 0x0612
+    //Stores triangle SFX change in period high
+    let trianglechangehigh = 0x0613
+
+    //Stores percent to change period low by each frame
+    let trianglelowpercentage = 0x0614
+    //Stores percent to change period high by each frame
+    let trianglehighpercentage = 0x0615
+    //if=5, percent=1/5(20%), if=0A, percent=1/10(10%), etc
+    let percentdifference = 0x0616
+    //Used in DivideTrianglePeriods
+    let dividedata = 0x0617
+
+    //Bit 7 set=has long beam, bit 0 set=has ice beam
+    let hasbeamsfx = 0x061F
+
+//The following addresses are loaded into $0640 thru $0643 when those 
+//addresses decrement to zero.  These addresses do not decrement.
+
+    //Holds number of frames to play sq1 channel data
+    let sq1framecountinit = 0x0620
+    //Holds number of frames to play sq2 channel data
+    let sq2framecountinit = 0x0621
+    //Holds number of frames to play triangle channel data
+    let triangleframecountinit = 0x0622
+    //Holds number of frames to play noise channel data
+    let noiseframecountinit = 0x0623
+
+    //Number of times to repeat SQ1 music loop
+    let sq1repeatcounter = 0x0624
+    //Number of times to repeat SQ2 music loop
+    let sq2repeatcounter = 0x0625
+    //Number of times to repeat Triangle music loop
+    let trianglerepeatcounter = 0x0626
+    //Number of times to repeat Noise music loop
+    let noiserepeatcounter = 0x0627
+
+    //Loaded into SQ1Cntrl0 when playing music
+    let sq1dutyenvelope = 0x0628
+    //Loaded into SQ2Cntrl0 when playing music
+    let sq2dutyenvelope = 0x0629
+    //disable\enable counter, linear count length
+    let trilinearcount = 0x062A
+
+    //Stores the offset to find proper note length table
+    let notelengthtbloffset = 0x062B
+    //0=Music does not repeat, Nonzero=music repeats
+    let musicrepeat = 0x062C
+    //$F0=disable length cntr, $00=long note, $0F=short note
+    let trianglecountercntrl = 0x062D
+    //Entry number in VolumeCntrlAdressTbl for SQ1
+    let sq1volumecntrl = 0x062E
+    //Entry number in VolumeCntrlAdressTbl for SQ2
+    let sq2volumecntrl = 0x062F
+    //low byte of base address for SQ1 music data
+    let sq1lowbasebyte = 0x0630
+    //High byte of base address for SQ1 music data
+    let sq1highbasebyte = 0x0631
+    //low byte of base address for SQ2 music data
+    let sq2lowbasebyte = 0x0632
+    //High byte of base address for SQ2 music data
+    let sq2highbasebyte = 0x0633
+    //low byte of base address for Triangle music data
+    let trianglelowbasebyte = 0x0634
+    //High byte of base address for Triangle music data
+    let trianglehighbasebyte = 0x0635
+    //low byte of base address for Noise music data
+    let noiselowbasebyte = 0x0636
+    //High byte of base address for Noise music data
+    let noisehighbasebyte = 0x0637
+
+    //Index to find sQ1 sound data index. Base=$630,$631
+    let sq1musicindexindex = 0x0638
+    //Index to find SQ2 sound data index. Base=$632,$633
+    let sq2musicindexindex = 0x0639
+    //Index to find Tri sound data index. Base=$634,$635
+    let trianglemusicindexindex = 0x063A
+    //Index to find Noise sound data index. Base=$636,$637
+    let noisemusicindexindex = 0x063B
+
+    //SQ1 Loop start index
+    let sq1loopindex = 0x063C
+    //SQ2 loop start index
+    let sq2loopindex = 0x063D
+    //Triangle loop start index
+    let triangleloopindex = 0x063E
+    //Noise loop start index
+    let noiseloopindex = 0x063F
+
+    //Decrements every sq1 frame. When 0, load new data
+    let sq1musicframecount = 0x0640
+    //Decrements every sq2 frame. when 0, load new data
+    let sq2musicframecount = 0x0641
+    //Decrements every triangle frame. When 0, load new data
+    let trianglemusicframecount = 0x0642
+    //Decrements every noise frame. When 0, load new data
+    let noisemusicframecount = 0x0643
+
+    //Value is loaded into SQ1Cntrl1 when playing music
+    let musicsq1sweep = 0x0648
+    //Value is loaded into SQ2Cntrl1 when playing music
+    let musicsq2sweep = 0x0649
+    //Loaded into TriangleCntrl1(not used)
+    let trianglesweep = 0x064A
+
+    //Least sig. byte of current channel(00,04,08 or 0C)
+    let thissoundchannel = 0x064B
+
+    //Stores flags of SFX currently being processed.
+    let currentsfxflags = 0x064D
+
+    //Noise in use? (Not used)
+    let noiseinuse = 0x0652
+    //1=SQ1 channel being used by SFX, 0=not in use
+    let sq1inuse = 0x0653
+    //2=SQ2 channel being used by SFX, 0=not in use
+    let sq2inuse = 0x0654
+    //3=Triangle channel being used by SFX, 0=not in use
+    let triangleinuse = 0x0655
+
+    //Stores channel type being processed(0,1,2,3 or 4)
+    let channeltype = 0x065C
+    //Stores flags of music to repeat
+    let currentmusicrepeat = 0x065D
+    //index for loading $62B thru $637(base=$BD31).
+    let musicinitindex = 0x065E
+
+    //Stores number of frames to play Noise SFX
+    let noisesfxlength = 0x0660
+    //Stores number of frames to play SQ1 SFX
+    let sq1sfxlength = 0x0661
+    //Stores number of frames to play SQ2 SFX
+    let sq2sfxlngth = 0x0662
+    //Stores number of frames to play Triangle SFX
+    let trianglesfxlength = 0x0663
+    //Stores number of frames to play Multi SFX
+    let multisfxlength = 0x0664
+
+    //Stores current frame number for noise SFX
+    let thisnoiseframe = 0x0665
+    //Stores current frame number for sq1 SFX
+    let thissq1frame = 0x0666
+    //Stores current frame number for SQ2 SFX
+    let thissq2frame = 0x0667
+    //Stores current frame number for triangle SFX
+    let thistriangleframe = 0x0668
+    //Stores current frame number for Multi SFX
+    let thismultiframe = 0x0669
+
+    //Stores index to SQ1 volume data in a volume data tbl
+    let sq1volumeindex = 0x066A
+    //Stores index to SQ2 volume data in a volume data tbl
+    let sq2volumeindex = 0x066B
+
+    //stores duty cycle and this frame volume data of SQ1
+    let sq1volumedata = 0x066C
+    //Stores duty cycle and this frame volume data of SQ2
+    let sq2volumedata = 0x066D
+
+    //Stores additional info for Noise SFX
+    let noisesfxdata = 0x0670
+    //Stores additional info for SQ1 SFX
+    let sq1sfxdata = 0x0671
+    //Stores additional info for SQ2 SFX
+    let sq2sfxdata = 0x0672
+    //Stores additional info for triangle SFX
+    let trianglesfxdata = 0x0673
+    //Stores additional info for Multi SFX
+    let multisfxdata = 0x0674
+    //Stores additional info for SQ1 and SQ2 SFX
+    let sq1sq2sfxdata = 0x0675
+
+    //Contains extra data for screw attack SFX
+    let screwattacksfxdata = 0x0678
+    //Period low data for processing multi SFX routines
+    let sq1sfxperiodlow = 0x0679
+
+    //Initialization flags for noise SFX
+    let noisesfxflag = 0x0680
+    //Initialization flags for SQ1 SFX
+    let sq1sfxflag = 0x0681
+    //Initialization flags for SQ2 SFX(never used)
+    let sq2sfxflag = 0x0682
+    //Initialization flags for triangle SFX
+    let trianglesfxflag = 0x0683
+    //Initialization Flags for SFX and some music
+    let multisfxflag = 0x0684
+
+    //Music init flags
+    let musicinitflag = 0x0685
+
+    //Continuation flags for noise SFX
+    let noisecontsfx = 0x0688
+    //Continuation flags for SQ1 SFX
+    let sq1contsfx = 0x0689
+    //Continuation flags for SQ2 SFX (never used)
+    let sq2contsfx = 0x068A
+    //Continuation flags for Triangle SFX
+    let trianglecontsfx = 0x068B
+    //Continuation flags for Multi SFX
+    let multicontsfx = 0x068C
+
+    //Stores the flag of the current music being played
+    let currentmusic = 0x068D
+
+//----------------------------------------------------------------------------------------------------
+
+    //Holds the byte describing what power-up is on name table.
+    let poweruptype = 0x0748
+    //Y coordinate of the power-up.
+    let powerupycoord = 0x0749
+    //X coordiante of the power-up
+    let powerupxcoord = 0x074A
+    //#$00 if on name table 0, #$01 if on name table 3.
+    let powerupnametable = 0x074B
+
+    //Entry into FramePtrTable for item animation.
+    let powerupanimindex = 0x074F
+
+    //Holds the description byte of a second power-up(if any).
+    let powerupbtype = 0x0750
+    //Y coordinate of second power-up.
+    let powerupbycoord = 0x0751
+    //X coordiante of second power-up.
+    let powerupbxcoord = 0x0752
+    //#$00 if on name table 0, #$01 if on name table 3.
+    let powerupbnametable = 0x0753
+
+    //4 MSBs = Y size of tile to erase.-->
+    let tilesize = 0x0780
+                    //4 LSBs = X size of tile to erase.
+    let tileinfo0 = 0x0781
+    let tileinfo1 = 0x0782
+    //Tile patterns to replace blasted tiles.
+    let tileinfo2 = 0x0783
+    let tileinfo3 = 0x0784
+    let tileinfo4 = 0x0785
+    let tileinfo5 = 0x0786
+
+    //# of bytes of data in PPUDataString. #$4F bytes max.
+    let ppustrindex = 0x07A0
+
+//$07A1 thru $07F0 contain a byte string of data to be written the the PPU. The first
+//byte in the string is the upper address byte of the starting point in the PPU to write
+//the data.  The second bye is the lower address byte. The third byte is a configuration
+//byte. if the MSB of this byte is set, the PPU is incremented by 32 after each byte write
+//(vertical write).  It the MSB is cleared, the PPU is incremented by 1 after each write
+//(horizontal write). If bit 6 is set, the next data byte is repeated multiple times during
+//successive PPU writes.  The number of times the next byte is repeated is based on bits
+//0-5 of the configuration byte.  Those bytes are a repitition counter. Any following bytes
+//are the actual data bytes to be written to the PPU. #$00 separates the data chunks.
+
+    //Thru $07F0. String of data bytes to be written to PPU.
+    let ppudatastring = 0x07A1
+
+//-------------------------------------[ Hardware defines ]-------------------------------------------
+
+    let ppucontrol0 = 0x2000
+    let ppucontrol1 = 0x2001
+    let ppustatus = 0x2002
+    //PPU hardware control registers.
+    let spraddress = 0x2003
+    let sprioreg = 0x2004
+    let ppuscroll = 0x2005
+    let ppuaddress = 0x2006
+    let ppuioreg = 0x2007
+
+    let sq1cntrl0 = 0x4000
+    //SQ1 hardware control registers.
+    let sq1cntrl1 = 0x4001
+    let sq1cntrl2 = 0x4002
+    let sq1cntrl3 = 0x4003
+
+    let sq2cntrl0 = 0x4004
+    //SQ2 hardware control registers.
+    let sq2cntrl1 = 0x4005
+    let sq2cntrl2 = 0x4006
+    let sq2cntrl3 = 0x4007
+
+    let trianglecntrl0 = 0x4008
+    //Triangle hardware control registers.
+    let trianglecntrl1 = 0x4009
+    let trianglecntrl2 = 0x400A
+    let trianglecntrl3 = 0x400B
+
+    let noisecntrl0 = 0x400C
+    //Noise hardware control registers.
+    let noisecntrl1 = 0x400D
+    let noisecntrl2 = 0x400E
+    let noisecntrl3 = 0x400F
+
+    let dmccntrl0 = 0x4010
+    //DMC hardware control registers.
+    let dmccntrl1 = 0x4011
+    let dmccntrl2 = 0x4012
+    let dmccntrl3 = 0x4013
+
+    //Sprite RAM DMA register.
+    let sprdmareg = 0x4014
+    //APU common control 1 register.
+    let apucommoncntrl0 = 0x4015
+    //Joypad1 register.
+    let cpujoypad1 = 0x4016
+    //Joypad2/APU common control 2 register.
+    let apucommoncntrl1 = 0x4017
+
+//----------------------------------------------------------------------------------------------------
+
+    //Thru $63FF. Used to load room before it is put into the PPU.
+    let roomrama = 0x6000
+    //Thru $67FF. Used to load room before it is put into the PPU.
+    let roomramb = 0x6400
+
+    //1=worst ending, 5=best ending
+    let endingtype = 0x6872
+
+    //Index for Samus saved game stats(not used). #$00, #$10, #$20.
+    let samusdataindex = 0x6875
+
+    //Unused memory address for storing Samus info.
+    let samusstat00 = 0x6876
+    //Number of energy tanks.
+    let tankcount = 0x6877
+    //Stores power-up items Samus has.
+    let samusgear = 0x6878
+    //Stores current number of missiles.
+    let missilecount = 0x6879
+    //Maximum amount of missiles Samus can carry
+    let maxmissiles = 0x687A
+    //bit 0 set, the statues blink, -->
+    let kraidstatuestatus = 0x687B
+    //bit 7 set, statues are up.
+    let ridleystatuestatus = 0x687C
+    //Low byte of Samus' age.
+    let samusage = 0x687D
+//      SamusAge+1        $687E    //Mid byte of Samus' age.
+//      SamusAge+2        $687F    //High byte of Samus' age.
+    //Unused memory address for storing Samus info.
+    let samusstat01 = 0x6880
+    //SamusStat02 and 03 keep track of how many times Samus has-->
+    let samusstat02 = 0x6881
+    //died, but this info is never accessed anywhere in the game.
+    let samusstat03 = 0x6882
+
+    //1=End scenes playing, 0=Not at ending.
+    let atending = 0x6883
+
+    //MSB set=erase selected saved game(not used in password carts).
+    let erasegame = 0x6884
+
+    //#$00 thru #$02. Stored Samus data to load. Apparently a save-->
+    let dataslot = 0x6885
+                    //game system was going to be used instead of a password routine.-->
+                    //The code that uses this memory address is never accessed in-->
+                    //the actual game. It looks like three player slots were going-->
+                    //to be used to store game data(like Zelda).  
+
+    //Counts number of power-ups and red doors-->
+    let numberofuniqueitems = 0x6886
+                    //opened.  Does not count different beams-->
+                    //picked up (ice, long, wave). increments by 2.
+
+    //Thru $68FC. History of Unique items collected.-->
+    let uniqueitemhistory = 0x6887
+    //Two bytes per item.
+    let enditemhistory = 0x68FC
+
+    //#$01=Kraid/Ridley present, #$00=Kraid/Ridley not present.
+    let kraidridleypresent = 0x6987
+
+    //Stores status of items 0 thru 7.
+    let passwordbyte00 = 0x6988
+    //Stores status of items 8 thru 15.
+    let passwordbyte01 = 0x6989
+    //Stores status of items 16 thru 23.
+    let passwordbyte02 = 0x698A
+    //Stores status of items 24 thru 31.
+    let passwordbyte03 = 0x698B
+    //Stores status of items 32 thru 39.
+    let passwordbyte04 = 0x698C
+    //Stores status of items 40 thru 47.
+    let passwordbyte05 = 0x698D
+    //Stores status of items 48 thru 55.
+    let passwordbyte06 = 0x698E
+    //Stores status of items 56 thru 58(bits 0 thru 2).
+    let passwordbyte07 = 0x698F
+    //start location(bits 0 thru 5), Samus suit status (bit 7).
+    let passwordbyte08 = 0x6990
+    //Stores SamusGear.
+    let passwordbyte09 = 0x6991
+    //Stores MissileCount.
+    let passwordbyte0a = 0x6992
+    //Stores SamusAge.
+    let passwordbyte0b = 0x6993
+    //Stores SamusAge+1.
+    let passwordbyte0c = 0x6994
+    //Stores SamusAge+2.
+    let passwordbyte0d = 0x6995
+    //Stores no data.
+    let passwordbyte0e = 0x6996
+    //Stores Statue statuses(bits 4 thu 7).
+    let passwordbyte0f = 0x6997
+    //Stores value RandomNumber1.
+    let passwordbyte10 = 0x6998
+    //Stores sum of $6988 thru $6998(Checksum).
+    let passwordbyte11 = 0x6999
+
+//Upper two bits of PasswordChar bytes will always be 00.
+    let passwordchar00 = 0x699A
+    let passwordchar01 = 0x699B
+    let passwordchar02 = 0x699C
+    let passwordchar03 = 0x699D
+    let passwordchar04 = 0x699E
+    let passwordchar05 = 0x699F
+    let passwordchar06 = 0x69A0
+    let passwordchar07 = 0x69A1
+    let passwordchar08 = 0x69A2
+    let passwordchar09 = 0x69A3
+    //These 18 memory addresses store the 18 characters-->
+    let passwordchar0a = 0x69A4
+    //of the password to be displayed on the screen.
+    let passwordchar0b = 0x69A5
+    let passwordchar0c = 0x69A6
+    let passwordchar0d = 0x69A7
+    let passwordchar0e = 0x69A8
+    let passwordchar0f = 0x69A9
+    let passwordchar10 = 0x69AA
+    let passwordchar11 = 0x69AB
+    let passwordchar12 = 0x69AC
+    let passwordchar13 = 0x69AD
+    let passwordchar14 = 0x69AE
+    let passwordchar15 = 0x69AF
+    let passwordchar16 = 0x69B0
+    let passwordchar17 = 0x69B1
+
+    //0 = invinsible Samus not active, 1 = invinsible Samus active.
+    let narpassword = 0x69B2
+    //0 = Samus has suit, 1 = Samus is without suit.
+    let justinbailey = 0x69B3
+    //Thru $6A73. Unique item history saved game data (not used).
+    let itmehistory = 0x69B4
+
+//---------------------------------------[ More enemy RAM ]-------------------------------------------
+
+    //Keeps track of enemy statuses. #$00=Enemy slot not in use,-->
+    let enstatus = 0x6AF4
+                    //#$04=Enemy frozen.
+    //Distance in pixels from middle of enemy to top or botom.
+    let enrady = 0x6AF5
+    //Distance in pixels from middle of enemy to left or right.
+    let enradx = 0x6AF6
+    //Index into enemy animation frame data.
+    let enanimframe = 0x6AF7
+    //Number of frames to delay between animation frames.
+    let enanimdelay = 0x6AF8
+    //Index to beginning of animation sequence.
+    let enresetanimindex = 0x6AF9
+    //Index to current animation.
+    let enanimindex = 0x6AFA
+    //#$00=Enemy on name table 0, #$01=Enemy on name table 3.
+    let ennametable = 0x6AFB
+//                $6AFC
+//                $6AFD
+//                $6AFE
+//                $6AFF
+//                $6B00
+//                $6B01
+    //Contains index into enemy data tables.
+    let endataindex = 0x6B02
+//                $6B03
+
+//-------------------------------------[ Intro sprite defines ]---------------------------------------
+
+    //thru $6E9F
+    let introstarsprite00 = 0x6E00
+    let introstarsprite01 = 0x6E04
+    let introstarsprite02 = 0x6E08
+    let introstarsprite03 = 0x6E0C
+    let introstarsprite04 = 0x6E10
+    let introstarsprite05 = 0x6E14
+    let introstarsprite06 = 0x6E18
+    let introstarsprite07 = 0x6E1C
+    let introstarsprite08 = 0x6E20
+    let introstarsprite09 = 0x6E24
+    let introstarsprite0a = 0x6E28
+    let introstarsprite0b = 0x6E2C
+    let introstarsprite0c = 0x6E30
+    let introstarsprite0d = 0x6E34
+    let introstarsprite0e = 0x6E38
+    let introstarsprite0f = 0x6E3C
+    let introstarsprite10 = 0x6E40
+    let introstarsprite11 = 0x6E44
+    let introstarsprite12 = 0x6E48
+    let introstarsprite13 = 0x6E4C
+    //RAM used for storing intro star sprite data.
+    let introstarsprite14 = 0x6E50
+    let introstarsprite15 = 0x6E54
+    let introstarsprite16 = 0x6E58
+    let introstarsprite17 = 0x6E5C
+    let introstarsprite18 = 0x6E60
+    let introstarsprite19 = 0x6E64
+    let introstarsprite1a = 0x6E68
+    let introstarsprite1b = 0x6E6C
+    let introstarsprite1c = 0x6E70
+    let introstarsprite1d = 0x6E74
+    let introstarsprite1e = 0x6E78
+    let introstarsprite1f = 0x6E7C
+    let introstarsprite20 = 0x6E80
+    let introstarsprite21 = 0x6E84
+    let introstarsprite22 = 0x6E88
+    let introstarsprite23 = 0x6E8C
+    let introstarsprite24 = 0x6E90
+    let introstarsprite25 = 0x6E94
+    let introstarsprite26 = 0x6E98
+    let introstarsprite27 = 0x6E9C
+
+//Intro sprite 0 and sparkle sprite.
+    //Loaded into byte 0 of sprite RAM(Y position).
+    let introspr0ycoord = 0x6EA0
+    //Loaded into byte 1 of sprite RAM(Pattern table index).
+    let introspr0patttbl = 0x6EA1
+    //Loaded into byte 2 of sprite RAM(Control byte).
+    let introspr0cntrl = 0x6EA2
+    //Loaded into byte 3 of sprite RAM(X position).
+    let introspr0xcoord = 0x6EA3
+    //Index to next sparkle sprite data byte.
+    let introspr0index = 0x6EA4
+    //Decrements each frame. When 0, load new sparkle sprite data.
+    let introspr0nextcntr = 0x6EA5
+    //Sparkle sprite y coordinate change.
+    let sparklespr0ychange = 0x6EA6
+    //Intro sprite x total movement distance.
+    let introspr0xchange = 0x6EA6
+    //Sparkle sprite x coordinate change.
+    let sparklespr0xchange = 0x6EA7
+    //Intro sprite y total movement distance.
+    let introspr0ychange = 0x6EA7
+    //decrements each frame from #$20. At 0, change sparkle sprite.
+    let introspr0chngcntr = 0x6EA8
+    //#$00 or #$01. When #$01, next sparkle data byte uses all 8-->
+    let introspr0bytetype = 0x6EA9
+                    //bits for x coord change. if #$00, next data byte contains-->
+                    //4 bits for x coord change and 4 bits for y coord change.
+    //#$01=sprite has completed its task, #$00 if not complete.
+    let introspr0complete = 0x6EAA
+    //Not used.
+    let introspr0spareb = 0x6EAB
+    //x displacement of sprite movement(run).
+    let introspr0xrun = 0x6EAC
+    //y displacement of sprite movement(rise).
+    let introspr0yrise = 0x6EAD
+    //MSB set=decrease sprite x pos, else increase sprite  x pos.
+    let introspr0xdir = 0x6EAE
+    //MSB set=decrease sprite y pos, else increase sprite  y pos.
+    let introspr0ydir = 0x6EAF
+
+//Intro sprite 1 and sparkle sprite.
+    //Loaded into byte 0 of sprite RAM(Y position).
+    let introspr1ycoord = 0x6EB0
+    //Loaded into byte 1 of sprite RAM(Pattern table index).
+    let introspr1patttbl = 0x6EB1
+    //Loaded into byte 2 of sprite RAM(Control byte).
+    let introspr1cntrl = 0x6EB2
+    //Loaded into byte 3 of sprite RAM(X position).
+    let introspr1xcoord = 0x6EB3
+    //Index to next sparkle sprite data byte.
+    let introspr1index = 0x6EB4
+    //Decrements each frame. When 0, load new sparkle sprite data.
+    let introspr1nextcntr = 0x6EB5
+    //Sparkle sprite y coordinate change.
+    let sparklespr1ychange = 0x6EB6
+    //Intro sprite x total movement distance.
+    let introspr1xchange = 0x6EB6
+    //Sparkle sprite x coordinate change.
+    let sparklespr1xchange = 0x6EB7
+    //Intro sprite y total movement distance.
+    let introspr1ychange = 0x6EB7
+    //decrements each frame from #$20. At 0, change sparkle sprite.
+    let introspr1chngcntr = 0x6EB8
+    //#$00 or #$01. When #$01, next sparkle data byte uses all 8-->
+    let introspr1bytetype = 0x6EB9
+                    //bits for x coord change. if #$00, next data byte contains-->
+                    //4 bits for x coord change and 4 bits for y coord change.
+    //#$01=sprite has completed its task, #$00 if not complete.
+    let introspr1complete = 0x6EBA
+    //Not used.
+    let introspr1spareb = 0x6EBB
+    //x displacement of sprite movement(run).
+    let introspr1xrun = 0x6EBC
+    //y displacement of sprite movement(rise).
+    let introspr1yrise = 0x6EBD
+    //MSB set=decrease sprite x pos, else increase sprite  x pos.
+    let introspr1xdir = 0x6EBE
+    //MSB set=decrease sprite y pos, else increase sprite  y pos.
+    let introspr1ydir = 0x6EBF
+
+//Intro sprite 2.
+    //Loaded into byte 0 of sprite RAM(Y position).
+    let introspr2ycoord = 0x6EC0
+    //Loaded into byte 1 of sprite RAM(Pattern table index).
+    let introspr2patttbl = 0x6EC1
+    //Loaded into byte 2 of sprite RAM(Control byte).
+    let introspr2cntrl = 0x6EC2
+    //Loaded into byte 3 of sprite RAM(X position).
+    let introspr2xcoord = 0x6EC3
+    //Not used.
+    let introspr2spare5 = 0x6EC4
+    //Not used.
+    let introspr2spare6 = 0x6EC5
+    //Intro sprite x total movement distance.
+    let introspr2xchange = 0x6EC6
+    //Intro sprite y total movement distance.
+    let introspr2ychange = 0x6EC7
+    //Not used.
+    let introspr2spare8 = 0x6EC8
+    //Not used.
+    let introspr2spare9 = 0x6EC9
+    //#$01=sprite has completed its task, #$00 if not complete.
+    let introspr2complete = 0x6ECA
+    //Not used.
+    let introspr2spareb = 0x6ECB
+    //x displacement of sprite movement(run).
+    let introspr2xrun = 0x6ECC
+    //y displacement of sprite movement(rise).
+    let introspr2yrise = 0x6ECD
+    //MSB set=decrease sprite x pos, else increase sprite  x pos.
+    let introspr2xdir = 0x6ECE
+    //MSB set=decrease sprite y pos, else increase sprite  y pos.
+    let introspr2ydir = 0x6ECF
+
+//Intro sprite 3.
+    //Loaded into byte 0 of sprite RAM(Y position).
+    let introspr3ycoord = 0x6ED0
+    //Loaded into byte 1 of sprite RAM(Pattern table index).
+    let introspr3patttbl = 0x6ED1
+    //Loaded into byte 2 of sprite RAM(Control byte).
+    let introspr3cntrl = 0x6ED2
+    //Loaded into byte 3 of sprite RAM(X position).
+    let introspr3xcoord = 0x6ED3
+    //Not used.
+    let introspr3spare5 = 0x6ED4
+    //Not used.
+    let introspr3spare6 = 0x6ED5
+    //Intro sprite x total movement distance.
+    let introspr3xchange = 0x6ED6
+    //Intro sprite y total movement distance.
+    let introspr3ychange = 0x6ED7
+    //Not used.
+    let introspr3spare8 = 0x6ED8
+    //Not used.
+    let introspr3spare9 = 0x6ED9
+    //#$01=sprite has completed its task, #$00 if not complete.
+    let introspr3complete = 0x6EDA
+    //Not used.
+    let introspr3spareb = 0x6EDB
+    //x displacement of sprite movement(run).
+    let introspr3xrun = 0x6EDC
+    //y displacement of sprite movement(rise).
+    let introspr3yrise = 0x6EDD
+    //MSB set=decrease sprite x pos, else increase sprite  x pos.
+    let introspr3xdir = 0x6EDE
+    //MSB set=decrease sprite y pos, else increase sprite  y pos.
+    let introspr3ydir = 0x6EDF
+
+//Intro sprite 4.
+    //Loaded into byte 0 of sprite RAM(Y position).
+    let introspr4ycoord = 0x6EE0
+    //Loaded into byte 1 of sprite RAM(Pattern table index).
+    let introspr4patttbl = 0x6EE1
+    //Loaded into byte 2 of sprite RAM(Control byte).
+    let introspr4cntrl = 0x6EE2
+    //Loaded into byte 3 of sprite RAM(X position).
+    let introspr4xcoord = 0x6EE3
+    //Not used.
+    let introspr4spare5 = 0x6EE4
+    //Not used.
+    let introspr4spare6 = 0x6EE5
+    //Intro sprite x total movement distance.
+    let introspr4xchange = 0x6EE6
+    //Intro sprite y total movement distance.
+    let introspr4ychange = 0x6EE7
+    //Not used.
+    let introspr4spare8 = 0x6EE8
+    //Not used.
+    let introspr4spare9 = 0x6EE9
+    //#$01=sprite has completed its task, #$00 if not complete.
+    let introspr4complete = 0x6EEA
+    //Not used.
+    let introspr4spareb = 0x6EEB
+    //x displacement of sprite movement(run).
+    let introspr4xrun = 0x6EEC
+    //y displacement of sprite movement(rise).
+    let introspr4yrise = 0x6EED
+    //MSB set=decrease sprite x pos, else increase sprite  x pos.
+    let introspr4xdir = 0x6EEE
+    //MSB set=decrease sprite y pos, else increase sprite  y pos.
+    let introspr4ydir = 0x6EEF
+
+//Intro sprite 5.
+    //Loaded into byte 0 of sprite RAM(Y position).
+    let introspr5ycoord = 0x6EF0
+    //Loaded into byte 1 of sprite RAM(Pattern table index).
+    let introspr5patttbl = 0x6EF1
+    //Loaded into byte 2 of sprite RAM(Control byte).
+    let introspr5cntrl = 0x6EF2
+    //Loaded into byte 3 of sprite RAM(X position).
+    let introspr5xcoord = 0x6EF3
+    //Not used.
+    let introspr5spare5 = 0x6EF4
+    //Not used.
+    let introspr5spare6 = 0x6EF5
+    //Intro sprite x total movement distance.
+    let introspr5xchange = 0x6EF6
+    //Intro sprite y total movement distance.
+    let introspr5ychange = 0x6EF7
+    //Not used.
+    let introspr5spare8 = 0x6EF8
+    //Not used.
+    let introspr5spare9 = 0x6EF9
+    //#$01=sprite has completed its task, #$00 if not complete.
+    let introspr5complete = 0x6EFA
+    //Not used.
+    let introspr5spareb = 0x6EFB
+    //x displacement of sprite movement(run).
+    let introspr5xrun = 0x6EFC
+    //y displacement of sprite movement(rise).
+    let introspr5yrise = 0x6EFD
+    //MSB set=decrease sprite x pos, else increase sprite  x pos.
+    let introspr5xdir = 0x6EFE
+    //MSB set=decrease sprite y pos, else increase sprite  y pos.
+    let introspr5ydir = 0x6EFF
+
+//Intro sprite 6.
+    //Loaded into byte 0 of sprite RAM(Y position).
+    let introspr6ycoord = 0x6F00
+    //Loaded into byte 1 of sprite RAM(Pattern table index).
+    let introspr6patttbl = 0x6F01
+    //Loaded into byte 2 of sprite RAM(Control byte).
+    let introspr6cntrl = 0x6F02
+    //Loaded into byte 3 of sprite RAM(X position).
+    let introspr6xcoord = 0x6F03
+    //Not used.
+    let introspr6spare5 = 0x6F04
+    //Not used.
+    let introspr6spare6 = 0x6F05
+    //Intro sprite x total movement distance.
+    let introspr6xchange = 0x6F06
+    //Intro sprite y total movement distance.
+    let introspr6ychange = 0x6F07
+    //Not used.
+    let introspr6spare8 = 0x6F08
+    //Not used.
+    let introspr6spare9 = 0x6F09
+    //#$01=sprite has completed its task, #$00 if not complete.
+    let introspr6complete = 0x6F0A
+    //Not used.
+    let introspr6spareb = 0x6F0B
+    //x displacement of sprite movement(run).
+    let introspr6xrun = 0x6F0C
+    //y displacement of sprite movement(rise).
+    let introspr6yrise = 0x6F0D
+    //MSB set=decrease sprite x pos, else increase sprite  x pos.
+    let introspr6xdir = 0x6F0E
+    //MSB set=decrease sprite y pos, else increase sprite  y pos.
+    let introspr6ydir = 0x6F0F
+
+//Intro sprite 7.
+    //Loaded into byte 0 of sprite RAM(Y position).
+    let introspr7ycoord = 0x6F10
+    //Loaded into byte 1 of sprite RAM(Pattern table index).
+    let introspr7patttbl = 0x6F11
+    //Loaded into byte 2 of sprite RAM(Control byte).
+    let introspr7cntrl = 0x6F12
+    //Loaded into byte 3 of sprite RAM(X position).
+    let introspr7xcoord = 0x6F13
+    //Not used.
+    let introspr7spare5 = 0x6F14
+    //Not used.
+    let introspr7spare6 = 0x6F15
+    //Intro sprite x total movement distance.
+    let introspr7xchange = 0x6F16
+    //Intro sprite y total movement distance.
+    let introspr7ychange = 0x6F17
+    //Not used.
+    let introspr7spare8 = 0x6F18
+    //Not used.
+    let introspr7spare9 = 0x6F19
+    //#$01=sprite has completed its task, #$00 if not complete.
+    let introspr7complete = 0x6F1A
+    //Not used.
+    let introspr7spareb = 0x6F1B
+    //x displacement of sprite movement(run).
+    let introspr7xrun = 0x6F1C
+    //y displacement of sprite movement(rise).
+    let introspr7yrise = 0x6F1D
+    //MSB set=decrease sprite x pos, else increase sprite  x pos.
+    let introspr7xdir = 0x6F1E
+    //MSB set=decrease sprite y pos, else increase sprite  y pos.
+    let introspr7ydir = 0x6F1F
+
+//----------------------------------------------------------------------------------------------------
+
+    //Thru $73FF. The map is 1Kb in size (1024 bytes).
+    let worldmapram = 0x7000
+
+    //Thru $782D. Samus saved game data (not used).
+    let samusdata = 0x77FE
+
+    //Writing to any of these addresses or any-->
+    let mmc1reg0 = 0x8000
+    //address in between will write configuration-->
+    let mmc1reg1 = 0xA000
+    //bits to the MMC chip.
+    let mmc1reg2 = 0xC000
+    let mmc1reg3 = 0xE000
+
+//------------------------------------------[ Misc. defines ]-----------------------------------------
+
+    let modetitle = 1
+
+//Bitmask defs used for SamusGear.
+    let gr_bombs = 0b00000001
+    let gr_highjump = 0b00000010
+    let gr_longbeam = 0b00000100
+    let gr_screwattack = 0b00001000
+    let gr_marumari = 0b00010000
+    let gr_varia = 0b00100000
+    let gr_wavebeam = 0b01000000
+    let gr_icebeam = 0b10000000
+
+//Samus action handlers.
+    let sa_stand = 0
+    //Also run and jump.
+    let sa_run = 1
+    let sa_jump = 2
+    let sa_roll = 3
+    let sa_pntup = 4
+    let sa_door = 5
+    let sa_pntjump = 6
+    let sa_dead = 7
+    let sa_dead2 = 8
+    let sa_elevator = 9
+    let sa_fadein0 = 20
+    let sa_fadein1 = 21
+    let sa_fadein2 = 22
+    let sa_fadein3 = 23
+    let sa_fadein4 = 24
+    let sa_begin = 255
+
+//Animations
+    let an_samusrun = 0x00
+    let an_samusfront = 0x04
+    let an_samusstand = 0x07
+    let an_samusjump = 0x0C
+    let an_samussalto = 0x0E
+    let an_samusrunjump = 0x13
+    let an_samusroll = 0x16
+    let an_bullet = 0x1B
+    let an_samusfirejump = 0x20
+    let an_samusfirerun = 0x22
+    let an_samuspntup = 0x27
+    let an_explode = 0x32
+    let an_samusjumppntup = 0x35
+    let an_samusrunpntup = 0x37
+    let an_wavebeam = 0x7D
+    let an_bombtick = 0x7F
+    let an_bombexplode = 0x82
+    let an_missileleft = 0x8B
+    let an_missileright = 0x8D
+    let an_missileexplode = 0x91
+
+//Weapon action handlers.
+    let wa_regularbeam = 1
+    let wa_wavebeam = 2
+    let wa_icebeam = 3
+    let wa_bulletexplode = 4
+    let wa_laybomb = 8
+    let wa_bombcount = 9
+    let wa_bombexplode = 10
+    let wa_missile = 11
