@@ -90,7 +90,7 @@ def _0001:
         //($82A3)Prepare to restart intro routines.
         word: prepintrorestart
         //($82ED)Turn screen off.
-        word: titlescreenoff
+        word: titledisable_screen
         //($82F3)Rts.
         word: titleroutinereturn
         //($82F3)Rts.
@@ -231,7 +231,7 @@ def drawintrobackground:
     //Initiates intro music.
     [multisfxflag] = a
     //($C439)Turn screen off.
-    call screenoff
+    call disable_screen
     //($C158)Erase name table data.
     call clear_both_nametables
     //Lower address of PPU information.
@@ -255,7 +255,7 @@ def drawintrobackground:
     //Not accessed by game.
     [sparememd7] = a
     //($C447)Turn screen on.
-    goto screenon
+    goto enable_screen
 
 def fadeindelay:
 
@@ -705,10 +705,10 @@ def _0019:
     //music restart counter.
     return
 
-def titlescreenoff:
+def titledisable_screen:
 
     //($C439)Turn screen off.
-    call screenoff
+    call disable_screen
     //Next routine is TitleRoutineReturn.
     [titleroutine]++
     //This routine should not be reached.
@@ -3107,7 +3107,7 @@ def itemdata:
 def clearall:
 
     //($C439)Turn screen off.
-    call screenoff
+    call disable_screen
     //Turn off screen, clear sprites and name tables.
     call clear_both_nametables
     call clear_all_sprites
@@ -3120,9 +3120,9 @@ def clearall:
     [scroll.y] = a
     [scroll.x] = a
     //($C42C)Wait for NMI to end.
-    call waitnmipass
+    call wait_vblank_complete
     //($C47D)Set PPU for horizontal write and turn off VBlank.
-    goto vboffandhorzwrite
+    goto disable_vblank_and_enable_horizontal_write
 
 def startcontinuescreen:
 
@@ -3147,9 +3147,9 @@ def startcontinuescreen:
 def turnondisplay:
 
     //($C487)Turn on the nonmaskable interrupt.
-    call nmion
+    call enable_vblank
     //($C447)Turn screen on.
-    goto screenon
+    goto enable_screen
 
 def choosestartcontinue:
 
@@ -3614,11 +3614,11 @@ def _007E:
     //Initialize starting area.
     [mainroutine] = a
     //($C45D)Turn off screen.
-    call screennmioff
+    call disable_screen_and_vblank
     //($C5DC)Load Samus GFX into pattern table.
     call loadsamusgfx
     //($C487)Turn on the non-maskable interrupt.
-    call nmion
+    call enable_vblank
     //Load area Samus is to start in.
     a = [inarea]
     a = a & 0xf
@@ -3691,17 +3691,17 @@ def displaypassword:
     //($8C7A)Calculates the password.
     call calculatepassword
     //($C487)Turn on the nonmaskable interrupt.
-    call nmion
+    call enable_vblank
     //($93C6)Displays password on screen.
     call passwordtoscreen
     //($C42C)Wait for NMI to end.
-    call waitnmipass
+    call wait_vblank_complete
     a = 0x13
     //Change palette.
     [video.palette_pending] = a
     [titleroutine]++
     //($C447)Turn screen on.
-    goto screenon
+    goto enable_screen
 
 //Information below is for above routine to display "PASS WORD" on the screen.
     //PPU memory high byte.
@@ -3761,7 +3761,7 @@ def gameover:
     //($C6D6)Loads the font for the password.
     call initgfx7
     //($C487)Turn on the nonmaskable interrupt.
-    call nmion
+    call enable_vblank
     //Load timer.time3 with a delay of 160 frames-->
     a = 0x10
     //(2.6 seconds) for displaying "GAME OVER".
@@ -3771,7 +3771,7 @@ def gameover:
     //DisplayPassword.
     [titleroutine] = a
     //($C447)Turn screen on.
-    goto screenon
+    goto enable_screen
 
 //Information below is for above routine to display "GAME OVER" on the screen.
     //PPU memory high byte.
@@ -3789,7 +3789,7 @@ def gameover:
 def passwordtoscreen:
 
     //($C42C)Wait for NMI to end.
-    call waitnmipass
+    call wait_vblank_complete
     //Index to find password characters(base=$699A).
     y = 0x5
     //($93F9)Load tiles on screen.
@@ -5055,7 +5055,7 @@ def _009D:
     //($C20E)Prepare to write to PPU.
     call prepare_ppu_process
     //($C487)Turn on non-maskable interrupt.
-    call nmion
+    call enable_vblank
     //Initiate end game music.
     a = 0x20
     [multisfxflag] = a
@@ -5084,7 +5084,7 @@ def _009D:
     [clrchangecounter] = a
     [roomptr]++
     //($C447)Turn screen on.
-    goto screenon
+    goto enable_screen
 
 def showendsamus:
 
@@ -5302,7 +5302,7 @@ def rollcredits:
     compare a to 0x2
     goto _00AF when ~zero
     //($C439)When 20 frames left in timer.time3,-->
-    call screenoff
+    call disable_screen
     //($C16D)clear name table 0 and sprites.-->
     call clear_nametable_0
     //($C1A3)prepares screen for credits.
@@ -5311,9 +5311,9 @@ def rollcredits:
     //Change to proper palette for credits.
     [video.palette_pending] = a
     //($C447)Turn screen on.
-    call screenon
+    call enable_screen
     //($C43F)Wait for NMI to end.
-    goto waitnmipass_
+    goto wait_vblank_complete_
 def _00AC:
     //If first page of credits has not started to-->
     a = [creditpagenumber]

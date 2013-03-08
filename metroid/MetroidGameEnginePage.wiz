@@ -232,7 +232,7 @@ task vblank do
         //($C2CA)check if data needs to be written to PPU.
         call checkppuwrite
         //($C44D)Update $2000 & $2001.
-        call writeppuctrl
+        call write_ppu_registers
         //($C29A)Update h/v scroll reg.
         call update_scroll
         //($C215)Read both joypads.
@@ -1050,62 +1050,51 @@ end
 
 // Wait for the NMI to end.
 
-def waitnmipass:
-    
-    //($C434)Indicate currently in NMI.
-    call clearnmistat
-def _002C:
-    a = [video.redraw_pending]
-    //Wait for NMI to end.
-    goto _002C when zero
-    return
+func wait_vblank_complete do
+    call pend_redraw
+    // Wait for NMI to end before continuing.
+    loop
+        a = [video.redraw_pending]
+    until ~zero end
+end
 
-def clearnmistat:
+func pend_redraw do
+    // Clear to indicate the game is currently running NMI routines.
+    [video.redraw_pending] = 0x0 via a
+end
 
-    //Clear NMI byte to indicate the game is-->
-    a = 0x0
-    //currently running NMI routines.
-    [video.redraw_pending] = a
-    return
-
-def screenoff:
-
-    a = [video.mask]
+def disable_screen: do
     //BG & SPR visibility = off
-    a = a & 0xe7
+    a = [video.mask] & 0xe7
+    // fallthrough
+end
 
-def writeandwait:
-
-def _002D:
+def write_video_mask_and_wait: do
     //Update value to be loaded into PPU control register.
     [video.mask] = a
+    // fallthrough
+end
 
-def waitnmipass_:
+func wait_vblank_complete_ do
+    call pend_redraw
+    // Wait for NMI to end before continuing.
+    loop
+        a = [video.redraw_pending]
+    until ~zero end
+end
 
-    //($C434)Indicate currently in NMI.
-    call clearnmistat
-def _002E:
-    a = [video.redraw_pending]
-    //Wait for NMI to end before continuing.
-    goto _002E when zero
-    return
+def enable_screen: do
+    // BG & SPR visibility = on
+    a = [video.mask] | 0x1e
+    // Branch always.
+    goto write_video_mask_and_wait when ~zero
+end
 
-def screenon:
-
-    a = [video.mask]
-    //BG & SPR visibility = on
-    a = a | 0x1e
-    //Branch always
-    goto _002D when ~zero
-
-//Update the actual PPU control registers.
-
-def writeppuctrl: do
-    a = [video.ctrl]
-    [nes.ppu.ctrl] = a
+// Update the actual PPU control registers.
+def write_ppu_registers: do
+    [nes.ppu.ctrl] = [video.ctrl] via a
     // Update PPU control registers.
-    a = [video.mask]
-    [nes.ppu.mask] = a
+    [nes.ppu.mask] = [video.mask] via a
     // Setup vertical or horizontal mirroring.
     a = [video.mirror]
     call prepare_ppu_mirror
@@ -1113,63 +1102,59 @@ def writeppuctrl: do
 end
 
 // Exit subroutines.
-def exit_sub:
+def exit_sub: do
     return
+end
 
-//Turn off both screen and NMI.
-def screennmioff:
-    a = [video.mask]
+// Turn off both screen and NMI.
+func disable_screen_and_vblank do
     //BG & SPR visibility = off
-    a = a & 0xe7
+    a = [video.mask] & 0xe7
     //($C43D)Wait for end of NMI.
-    call writeandwait
-    //Prepare to turn off NMI in PPU.
-    a = [video.ctrl]
-    //NMI = off
-    a = a & 0x7f
-    [video.ctrl] = a
-    //Actually load PPU register with NMI off value.
+    call write_video_mask_and_wait
+    // Prepare to turn off NMI in PPU.
+    [video.ctrl] = [video.ctrl] & 0x7f via a
+    // Actually load PPU register with NMI off value.
     [nes.ppu.ctrl] = a
-    return
+end
 
 //The following routine does not appear to be used.
-
+do
     //Enable VBlank.
-    a = [video.ctrl]
-    a = a | 0x80
+    a = [video.ctrl] | 0x80
     //Write PPU control register 0 and PPU status byte.
     [video.ctrl] = a
     [nes.ppu.ctrl] = a
     //Turn sprites and screen on.
-    a = [video.mask]
-    a = a | 0x1e
-    //Branch always.
-    goto _002D when ~zero
+    a = [video.mask] | 0x1e
+    // Branch always.
+    goto write_video_mask_and_wait when ~zero
+end
 
-def vboffandhorzwrite:
- 
-    a = [video.ctrl]
+def disable_vblank_and_enable_horizontal_write: do
     //Horizontal write, disable VBlank.
-    a = a & 0x7b
-def _002F:
+    a = [video.ctrl] & 0x7b
+    // fallthrough
+end
+
+func write_ppu_ctrl do
     //Save new values in the PPU control register-->
     [nes.ppu.ctrl] = a
     //and PPU status byte.
     [video.ctrl] = a
-    return
+end
 
-def nmion:
-
-def _0030:
-    a = [nes.ppu.status]
-    //Wait for end of VBlank.
-    a = a & 0x80
-    goto _0030 when ~zero
-    a = [video.ctrl]
-    //Enable VBlank interrupts.
-    a = a | 0x80
-    //Branch always.
-    goto _002F when ~zero
+def enable_vblank: do
+    // Wait for end of VBlank.
+    loop
+        a = [nes.ppu.status] & 0x80
+    until zero end
+    a = [video.ctrl] | 0x80
+    // Enable VBlank interrupts.
+    a = a
+    // Branch always.
+    goto write_ppu_ctrl when ~zero
+end
 
 //--------------------------------------[ Timer routines ]--------------------------------------------
 
@@ -1309,7 +1294,7 @@ def initbank0:
     //Game is at title routines.
     [gamemode] = y
     //($C45D)Waits for NMI to end then turns it off.
-    call screennmioff
+    call disable_screen_and_vblank
     //($A93E)Copy game map from ROM to cartridge RAM $7000-$73FF
     call copymap
     //($C158)Erase name table data.
@@ -1326,7 +1311,7 @@ def _0033:
     //($C5D7)Load title GFX.
     call inittitlegfx
     //($C487)Turn on VBlank interrupts.
-    goto nmion
+    goto enable_vblank
 
 //Brinstar memory page.
 
@@ -1336,7 +1321,7 @@ def initbank1:
     //GameMode = play.
     [gamemode] = a
     //($C45D)Disable screen and Vblank.
-    call screennmioff
+    call disable_screen_and_vblank
     a = [mainroutine]
     //Is game engine running? if so, branch.-->
     compare a to 0x3
@@ -1360,7 +1345,7 @@ def _0034:
     //($C604)Load Brinstar GFX.
     call initbrinstargfx
     //($C487)Turn on VBlank interrupts.
-    goto nmion
+    goto enable_vblank
 
 func clear_samus_ram do
     //Clears Samus stats(Health, full tanks, game timer, etc.).
@@ -1382,11 +1367,11 @@ def initbank2:
     a = 0x0
     [gamemode] = a
     //($C45D)Disable screen and Vblank.
-    call screennmioff
+    call disable_screen_and_vblank
     //($C622)Load Norfair GFX.
     call initnorfairgfx
     //($C487)Turn on VBlank interrupts.
-    goto nmion
+    goto enable_vblank
 
 //Tourian memory page.
 
@@ -1396,7 +1381,7 @@ def initbank3:
     a = 0x0
     [gamemode] = a
     //($C45D)Disable screen and Vblank.
-    call screennmioff
+    call disable_screen_and_vblank
     y = 0xd
 def _0036:
     //Load info from table below into-->
@@ -1408,7 +1393,7 @@ def _0036:
     //($C645)Load Tourian GFX.
     call inittouriangfx
     //($C487)Turn on VBlank interrupts.
-    goto nmion
+    goto enable_vblank
 
 //Table used by above subroutine and loads the initial data used to describe
 //metroid's behavior in the Tourian section of the game.
@@ -1425,11 +1410,11 @@ def initbank4:
     a = 0x0
     [gamemode] = a
     //($C45D)Disable screen and Vblank.
-    call screennmioff
+    call disable_screen_and_vblank
     //($C677)Load Kraid GFX.
     call initkraidgfx
     //($C487)Turn on VBlank interrupts.
-    goto nmion
+    goto enable_vblank
 
 //Ridley memory page.
 
@@ -1439,11 +1424,11 @@ def initbank5:
     a = 0x0
     [gamemode] = a
     //($C45D)Disable screen and Vblank.
-    call screennmioff
+    call disable_screen_and_vblank
     //($C69F)Loag Ridley GFX.
     call initridleygfx
     //($C487)Turn on VBlank interrupts.
-    goto nmion
+    goto enable_vblank
 
 def initendgfx:
 
@@ -1944,7 +1929,7 @@ def _003F:
     goto _003D when ~zero
 
     //($C439)Turn off Background and visibility.
-    call screenoff
+    call disable_screen
     //($C158)Clear screen data.
     call clear_both_nametables
     //($C1A3)Erase all sprites from sprite RAM.
@@ -2026,7 +2011,7 @@ def _0041:
     [sparemem30] = x
     //SamusInit is next routine to run.
     [mainroutine]++
-    goto screenon
+    goto enable_screen
 
 // CopyPtrs
 // ========
@@ -2252,7 +2237,7 @@ def gameover:
     //Prepare to switch to title memory page.
     [switchpending] = a
     //($C439)Turn screen off.
-    goto screenoff
+    goto disable_screen
 
 //------------------------------------------[ Pause mode ]--------------------------------------------
 
@@ -2295,7 +2280,7 @@ def gopassword:
     a = a | 0x1
     [noisesfxflag] = a
     //($C439)Turn off screen.
-    goto screenoff
+    goto disable_screen
 
 //-----------------------------------------[ Samus intro ]--------------------------------------------
 
@@ -2645,7 +2630,7 @@ def agetable:
 
 def clearscreendata:
     //($C439)Turn off screen.
-    call screenoff
+    call disable_screen
     //Fill current nametable with #$FF.
     [0x0] = 0xff via a
     call clear_nametable
@@ -5317,11 +5302,11 @@ def _00EF:
     a = 0x1
 def _00F0:
     [video.palette_pending] = a
-    call waitnmipass_
+    call wait_vblank_complete_
     call selectsamuspal
     //($LD92C)Start music.
     call play_music
-    call screenon
+    call enable_screen
     call copyptrs
     call destroyenemies
     x = 0x20
