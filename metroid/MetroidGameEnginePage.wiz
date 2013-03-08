@@ -64,57 +64,51 @@ end
 
 def startup: do
     a = 0x00
-    //Clear MMC1 registers.
+    // Clear MMC1 registers.
     unroll 5 do
         [nes.mmc1.chr1] = a
     end
     unroll 5 do
         [nes.mmc1.chr2] = a
     end
+    
     // Swap to PRG bank #0 at $8000
-    call mmcwritereg3
-    //X = $FF
+    call write_rom_bank
+
+    // x = 0xFF. Setup the stack pointer.
     x--
-    //S points to end of stack page
     s = x
 
-    //Clear RAM at $000-$7FF.
-    //$0000 = #$0700
-    [0x1] = 0x7 via y
-    [0x0] = 0x0 via y
-    //A = 0
+    // Clear system RAM.
+    [0x1] = 0x70 via y
+    [0x0] = 0x00 via y
     a = y
     loop
-        //clear address
-        [[0x0]:y] = a
-        y++
-        //Repeat for entire page.
-        continue when ~zero
-        //Decrement high byte of address.
+        loop
+            [[0x0]:y] = a
+            y++
+        until zero end
+
         [0x1]--
-        //If $01 < 0, all pages are cleared.
         break when negative
         x = [0x1]
-        //Keep looping until ram is cleared.
+
         compare x to 0x1
     until zero end
 
-    //Clear cartridge RAM at $6000-$7FFF.
-    //$0000 points to $7F00
-    [0x1] = 0x7f via y
+    // Clear cartridge RAM.
+    [0x1] = 0x7F via y
     [0x0] = 0x0 via y
     //A = 0
     a = y
     loop
-        [[0x0]:y] = a
-        //Clears 256 bytes of memory before decrementing to next-->
-        y++
-        //256 bytes.
-        continue when ~zero
+        loop
+            [[0x0]:y] = a
+            y++
+        until zero end
+
         [0x1]--
-        //Is address < $6000?-->
         x = [0x1]
-        //If not, do another page.
         compare x to 0x60
     until < end
 
@@ -1352,7 +1346,7 @@ def switch_rom_bank:
     [switchupperbits] = [switchupperbits] & 0x18 | [0x0] via a
 
 //Loads the lower memory page with the bank specified in A.
-def mmcwritereg3:
+def write_rom_bank:
     unroll 4 do
         [nes.mmc1.prg] = a
         a = a >> 1
