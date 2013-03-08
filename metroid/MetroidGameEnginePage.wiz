@@ -66,10 +66,10 @@ def startup:
     a = 0x00
     //Clear MMC1 registers.
     unroll 5 do
-        [mmc1reg1] = a
+        [nes.mmc1.chr1] = a
     end
     unroll 5 do
-        [mmc1reg2] = a
+        [nes.mmc1.chr2] = a
     end
     // Swap to PRG bank #0 at $8000
     call mmcwritereg3
@@ -1362,17 +1362,17 @@ def setppumirror:
     //Replace bit 0 with stored bit at $00.
     a = a | [0x0]
     [mmcreg0cntrl] = a
-    [mmc1reg0] = a
+    [nes.mmc1.ctrl] = a
     a = a >> 1
-    [mmc1reg0] = a
+    [nes.mmc1.ctrl] = a
     a = a >> 1
-    [mmc1reg0] = a
+    [nes.mmc1.ctrl] = a
     //Load new configuration data serially-->
     a = a >> 1
     //into MMC1Reg0.
-    [mmc1reg0] = a
+    [nes.mmc1.ctrl] = a
     a = a >> 1
-    [mmc1reg0] = a
+    [nes.mmc1.ctrl] = a
     return
 
 def prepppumirror:
@@ -1419,10 +1419,10 @@ def switch_rom_bank:
 //Loads the lower memory page with the bank specified in A.
 def mmcwritereg3:
     unroll 4 do
-        [mmc1reg3] = a
+        [nes.mmc1.prg] = a
         a = a >> 1
     end
-    [mmc1reg3] = a
+    [nes.mmc1.prg] = a
     //Restore A with current bank number before exiting.
     a = [0x0]
 def _0032:
@@ -3284,8 +3284,6 @@ def game_engine_page_CCB7:
     return
 
 def runanimationtbl:
-
-def game_engine_page_CCBE:
     byte: an_samusrun
     byte: an_samusrunpntup
 
@@ -3497,7 +3495,7 @@ def _0079:
     a = a >> 1
     a = a >> 1
     x = a
-    a = [game_engine_page_CCBE:x]
+    a = [runanimationtbl:x]
     compare a to [animresetindex]
     goto _0079 when zero
     call setsamusanim
@@ -13151,11 +13149,11 @@ def _02AB:
     goto _02AB when ~negative
     a = a | 0xff
     //Reset MMC1 chip
-    [mmc1reg0] = a
+    [nes.mmc1.ctrl] = a
     //(MSB is set)
-    [mmc1reg1] = a
-    [mmc1reg2] = a
-    [mmc1reg3] = a
+    [nes.mmc1.chr1] = a
+    [nes.mmc1.chr2] = a
+    [nes.mmc1.prg] = a
     //($C01A)Do preliminary housekeeping.
     goto startup
 

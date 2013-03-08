@@ -925,6 +925,13 @@ package nes do
         let in1 = 0x4016
         let in2 = 0x4017
     end
+
+    package mmc1 do
+        let ctrl = 0x8000
+        let chr1 = 0xA000
+        let chr2 = 0xC000
+        let prg = 0xE000
+    end
 end
 
 //----------------------------------------------------------------------------------------------------
@@ -1428,14 +1435,6 @@ end
 
     //Thru $782D. Samus saved game data (not used).
     let samusdata = 0x77FE
-
-    //Writing to any of these addresses or any-->
-    let mmc1reg0 = 0x8000
-    //address in between will write configuration-->
-    let mmc1reg1 = 0xA000
-    //bits to the MMC chip.
-    let mmc1reg2 = 0xC000
-    let mmc1reg3 = 0xE000
 
 //------------------------------------------[ Misc. defines ]-----------------------------------------
 

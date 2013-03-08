@@ -9125,11 +9125,11 @@ def _0064:
     goto _0064 when ~negative
     a = a | 0xff
     //Reset MMC1 chip.-->
-    [mmc1reg0] = a
+    [nes.mmc1.ctrl] = a
     //(MSB is set).
-    [mmc1reg1] = a
-    [mmc1reg2] = a
-    [mmc1reg3] = a
+    [nes.mmc1.chr1] = a
+    [nes.mmc1.chr2] = a
+    [nes.mmc1.prg] = a
     //($C01A)Does preliminry housekeeping.
     goto startup
 
