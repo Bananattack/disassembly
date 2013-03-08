@@ -301,27 +301,17 @@ def update_main:
 def done:
     a = [mainroutine]
     //($C27C)Use MainRoutine as index into routine table below.
-    call choose_routine
-        //($C801)Area init.
-        word: areainit
-        //($C81D)More area init.
-        word: moreinit
-        //($C8D1)Samus init.
-        word: samusinit
-        //($C92B)Game engine.
-        word: gameengine
-        //($C9A6)Display GAME OVER.
-        word: gameover
-        //($C9B1)Pause game.
-        word: pausemode
-        //($C9C4)Display password.
-        word: gopassword
-        //($C155)Just advances to next routine in table.
-        word: incrementroutine
-        //($C9D7)Intro.
-        word: samusintro
-        //($C494)Delay.
-        word: waittimer
+    call choose_routine word:
+        areainit,           //($C801)Area init.
+        moreinit,           //($C81D)More area init.
+        samusinit,          //($C8D1)Samus init.
+        gameengine,         //($C92B)Game engine.
+        gameover,           //($C9A6)Display GAME OVER.
+        pausemode,          //($C9B1)Pause game.
+        gopassword,         //($C9C4)Display password.
+        incrementroutine,   //($C155)Just advances to next routine in table.
+        samusintro,         //($C9D7)Intro.
+        waittimer           //($C494)Delay.
 
 func incrementroutine do
     //Increment to next routine in above table.
