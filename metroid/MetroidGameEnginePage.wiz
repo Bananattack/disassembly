@@ -304,29 +304,26 @@ def done:
     a = [mainroutine]
     //($C27C)Use MainRoutine as index into routine table below.
     call choose_routine
-
-//Pointer table to code.
-
-    //($C801)Area init.
-    word: areainit
-    //($C81D)More area init.
-    word: moreinit
-    //($C8D1)Samus init.
-    word: samusinit
-    //($C92B)Game engine.
-    word: gameengine
-    //($C9A6)Display GAME OVER.
-    word: gameover
-    //($C9B1)Pause game.
-    word: pausemode
-    //($C9C4)Display password.
-    word: gopassword
-    //($C155)Just advances to next routine in table.
-    word: incrementroutine
-    //($C9D7)Intro.
-    word: samusintro
-    //($C494)Delay.
-    word: waittimer
+        //($C801)Area init.
+        word: areainit
+        //($C81D)More area init.
+        word: moreinit
+        //($C8D1)Samus init.
+        word: samusinit
+        //($C92B)Game engine.
+        word: gameengine
+        //($C9A6)Display GAME OVER.
+        word: gameover
+        //($C9B1)Pause game.
+        word: pausemode
+        //($C9C4)Display password.
+        word: gopassword
+        //($C155)Just advances to next routine in table.
+        word: incrementroutine
+        //($C9D7)Intro.
+        word: samusintro
+        //($C494)Delay.
+        word: waittimer
 
 func incrementroutine do
     //Increment to next routine in above table.
@@ -3117,35 +3114,31 @@ def updatesamus:
     return
 
 def gosamushandler:
-
     a = [objaction]
     //Branch if Samus is standing.
     goto samusstand when negative
     //($C27C)Goto proper Samus handler routine.
     call choose_routine
-
-//Pointer table for Samus' action handlers.
-
-    //($CC36)Standing.
-    word: samusstand
-    //($CCC2)Running.
-    word: samusrun
-    //($D002)Jumping.
-    word: samusjump
-    //($D0E1)Rolling.
-    word: samusroll
-    //($D198)Pointing up.
-    word: samuspntup
-    //($D3A8)Inside door while screen scrolling.
-    word: samusdoor
-    //($D002)Jumping while pointing up.
-    word: samusjump
-    //($D41A)Dead.
-    word: samusdead
-    //($D41F)More dead.
-    word: samusdead2
-    //($D423)Samus on elevator.
-    word: samuselevator
+        //($CC36)Standing.
+        word: samusstand
+        //($CCC2)Running.
+        word: samusrun
+        //($D002)Jumping.
+        word: samusjump
+        //($D0E1)Rolling.
+        word: samusroll
+        //($D198)Pointing up.
+        word: samuspntup
+        //($D3A8)Inside door while screen scrolling.
+        word: samusdoor
+        //($D002)Jumping while pointing up.
+        word: samusjump
+        //($D41A)Dead.
+        word: samusdead
+        //($D41F)More dead.
+        word: samusdead2
+        //($D423)Samus on elevator.
+        word: samuselevator
 
 //---------------------------------------[ Samus standing ]-------------------------------------------
 
@@ -3214,24 +3207,19 @@ def _0067:
     goto _0068 when carry
     //Select routine below.
     call choose_routine
-
-//Pointer table to code.
-
-    //($C45C)Rts.
-    word: exitsub
-    //($CC98)Samus is running.
-    word: setsamusrun
-    //($CFC3)Samus is jumping.
-    word: setsamusjump
-    //($D0B5)Samus is in a ball.
-    word: setsamusroll
-    //($CF77)Samus is pointing up.
-    word: setsamuspntup
+        //($C45C)Rts.
+        word: exitsub
+        //($CC98)Samus is running.
+        word: setsamusrun
+        //($CFC3)Samus is jumping.
+        word: setsamusjump
+        //($D0B5)Samus is in a ball.
+        word: setsamusroll
+        //($CF77)Samus is pointing up.
+        word: setsamuspntup
 
 //Table used by above subroutine.
-
 def actiontable:
-
     //Run right.
     byte: sa_run
     //Run left.
@@ -4248,30 +4236,25 @@ def _00A6:
     call setsamusdata
     a = [objaction]
     call choose_routine
-
-// Pointer table to code
-
-    word: game_engine_page_CF55
-    word: game_engine_page_CC98
-    //($C45C)rts
-    word: exitsub
-    word: game_engine_page_D0B5
-    //($C45C)rts
-    word: exitsub
-    //($C45C)rts
-    word: exitsub
-    word: game_engine_page_CFBE
-    //($C45C)rts
-    word: exitsub
-    //($C45C)rts
-    word: exitsub
-    //($C45C)rts
-    word: exitsub
+        word: game_engine_page_CF55
+        word: game_engine_page_CC98
+        //($C45C)rts
+        word: exitsub
+        word: game_engine_page_D0B5
+        //($C45C)rts
+        word: exitsub
+        //($C45C)rts
+        word: exitsub
+        word: game_engine_page_CFBE
+        //($C45C)rts
+        word: exitsub
+        //($C45C)rts
+        word: exitsub
+        //($C45C)rts
+        word: exitsub
 
 // Table used by above subroutine
-
 def table07:
-
     byte: sa_run
     byte: sa_run
     byte: sa_roll
@@ -4759,31 +4742,30 @@ def dooneprojectile:
     [pageindex] = x
     a = [objaction:x]
     call choose_routine
-
-    //($C45C) rts
-    word: exitsub
-    //regular beam
-    word: updatebullet
-    //wave beam
-    word: updatewavebullet
-    //ice beam
-    word: updateicebullet
-    //bullet/missile explode
-    word: bulletexplode
-    //lay bomb
-    word: game_engine_page_D65E
-    //lay bomb
-    word: game_engine_page_D670
-    //lay bomb
-    word: game_engine_page_D691
-    //lay bomb
-    word: game_engine_page_D65E
-    //bomb countdown
-    word: game_engine_page_D670
-    //bomb explode
-    word: game_engine_page_D691
-    //missile
-    word: updatebullet
+        //($C45C) rts
+        word: exitsub
+        //regular beam
+        word: updatebullet
+        //wave beam
+        word: updatewavebullet
+        //ice beam
+        word: updateicebullet
+        //bullet/missile explode
+        word: bulletexplode
+        //lay bomb
+        word: game_engine_page_D65E
+        //lay bomb
+        word: game_engine_page_D670
+        //lay bomb
+        word: game_engine_page_D691
+        //lay bomb
+        word: game_engine_page_D65E
+        //bomb countdown
+        word: game_engine_page_D670
+        //bomb explode
+        word: game_engine_page_D691
+        //missile
+        word: updatebullet
 
 def updatebullet:
 
@@ -5266,25 +5248,21 @@ def getobjcoords:
     goto makewramptr
 
 def updateelevator:
-
     x = 0x20
     [pageindex] = x
     a = [objaction:x]
     call choose_routine
-
-// Pointer table to elevator handlers
-
-    //($C45C) rts
-    word: exitsub
-    word: elevatoridle
-    word: game_engine_page_D80E
-    word: elevatormove
-    word: elevatorscroll
-    word: game_engine_page_D8A3
-    word: game_engine_page_D8BF
-    word: game_engine_page_D8A3
-    word: elevatormove
-    word: elevatorstop
+        //($C45C) rts
+        word: exitsub
+        word: elevatoridle
+        word: game_engine_page_D80E
+        word: elevatormove
+        word: elevatorscroll
+        word: game_engine_page_D8A3
+        word: game_engine_page_D8BF
+        word: game_engine_page_D8A3
+        word: elevatormove
+        word: elevatorstop
 
 def elevatoridle:
 
@@ -9190,32 +9168,26 @@ def selectroomram:
 //------------------------------------[ write attribute table data ]----------------------------------
 
 def attribtablewrite:
-
-def _01C2:
     a = [roomnumber]
     //Determine what row of PPU attribute table data, if any,-->
     a = a & 0xf
     //to load from RoomRAM into PPU.
     [roomnumber]++
     call choose_routine
-
-//The following table is used by the code above to determine when to write to the PPU attribute table.
-
-    //($C45C)Rts.
-    word: exitsub
-    //($E5E2)Write first row of PPU attrib data.
-    word: writeppuattribtbl
-    //($C45C)Rts.
-    word: exitsub
-    //($E5E2)Write second row of PPU attrib data.
-    word: writeppuattribtbl
-    //($EA26)Finished writing attribute table data.
-    word: roomfinished
+        //($C45C)Rts.
+        word: exitsub
+        //($E5E2)Write first row of PPU attrib data.
+        word: writeppuattribtbl
+        //($C45C)Rts.
+        word: exitsub
+        //($E5E2)Write second row of PPU attrib data.
+        word: writeppuattribtbl
+        //($EA26)Finished writing attribute table data.
+        word: roomfinished
 
 //-----------------------------------[ Finished writing room data ]-----------------------------------
 
 def roomfinished:
-
     //No more tasks to perform on current room.-->
     a = 0xff
     //Set RoomNumber to #$FF.
@@ -9226,7 +9198,6 @@ def _01C3:
 //------------------------------------------[ Setup room ]--------------------------------------------
 
 def setuproom:
-
     //Room number.
     a = [roomnumber]
     compare a to 0xff
@@ -9237,7 +9208,7 @@ def setuproom:
     goto _01C4 when zero
     compare a to 0xf0
     //Branch if time to write PPU attribute table data.
-    goto _01C2 when carry
+    goto attribtablewrite when carry
     //($EC9B)Update which sprite belongs on which name table.
     call updateroomspriteinfo
 
@@ -9431,25 +9402,22 @@ def enemyloop:
     a = a & 0xf
     //Jump to proper enemy/door handling routine.
     call choose_routine
-
-//Pointer table to code.
-
-    //($C45C)Rts.
-    word: exitsub
-    //($EB06)Room enemies.
-    word: loadenemy
-    //($EB8C)Room doors.
-    word: loaddoor
-    //($C45C)Rts.
-    word: exitsub
-    //($EC04)Elevator.
-    word: loadelevator
-    //($C45C)Rts.
-    word: exitsub
-    //($EC2F)Kraid & Ridley statues.
-    word: loadstatues
-    //($EC57)Regenerating enemies(such as Zeb).
-    word: zebhole
+        //($C45C)Rts.
+        word: exitsub
+        //($EB06)Room enemies.
+        word: loadenemy
+        //($EB8C)Room doors.
+        word: loaddoor
+        //($C45C)Rts.
+        word: exitsub
+        //($EC04)Elevator.
+        word: loadelevator
+        //($C45C)Rts.
+        word: exitsub
+        //($EC2F)Kraid & Ridley statues.
+        word: loadstatues
+        //($EC57)Regenerating enemies(such as Zeb).
+        word: zebhole
 
 def endofroom:
 
@@ -10087,31 +10055,28 @@ def choosehandlerroutine:
     a = a & 0xf
     //($C27C)Load proper handling routine from table below.
     call choose_routine
-
-//Handler routines jumped to by above code.
-
-    //($C45C)rts.
-    word: exitsub
-    //($EDF8)Some squeepts.
-    word: squeepthandler
-    //($EDFE)power-ups.
-    word: poweruphandler
-    //($EE63)Special enemies(Mellows, Melias and Memus).
-    word: specenemyhandler
-    //($EEA1)Elevators.
-    word: elevatorhandler
-    //($EEA6)Mother brain room cannons.
-    word: cannonhandler
-    //($EEAE)Mother brain.
-    word: motherbrainhandler
-    //($EECA)Zeebetites.
-    word: zeebetitehandler
-    //($EEEE)Rinkas.
-    word: rinkahandler
-    //($EEF4)Some doors.
-    word: doorhandler
-    //($EEFA)Background palette change.
-    word: palettehandler
+        //($C45C)rts.
+        word: exitsub
+        //($EDF8)Some squeepts.
+        word: squeepthandler
+        //($EDFE)power-ups.
+        word: poweruphandler
+        //($EE63)Special enemies(Mellows, Melias and Memus).
+        word: specenemyhandler
+        //($EEA1)Elevators.
+        word: elevatorhandler
+        //($EEA6)Mother brain room cannons.
+        word: cannonhandler
+        //($EEAE)Mother brain.
+        word: motherbrainhandler
+        //($EECA)Zeebetites.
+        word: zeebetitehandler
+        //($EEEE)Rinkas.
+        word: rinkahandler
+        //($EEF4)Some doors.
+        word: doorhandler
+        //($EEFA)Background palette change.
+        word: palettehandler
 
 //---------------------------------------[ Squeept handler ]------------------------------------------
 
@@ -11254,17 +11219,14 @@ def _022C:
     compare a to 0x7
     goto _022D when carry
     call choose_routine
-
-// Pointer table to code
-
-    //($C45C) rts
-    word: exitsub
-    word: game_engine_page_F3BE
-    word: game_engine_page_F3E6
-    word: 0xf40d
-    word: game_engine_page_F43E
-    word: game_engine_page_F483
-    word: game_engine_page_F4EE
+        //($C45C) rts
+        word: exitsub
+        word: game_engine_page_F3BE
+        word: game_engine_page_F3E6
+        word: 0xf40d
+        word: game_engine_page_F43E
+        word: game_engine_page_F483
+        word: game_engine_page_F4EE
 
 def _022D:
     //($FA18)Free enemy data slot.
@@ -12129,18 +12091,15 @@ def _026D:
     a = [enstatus:x]
     goto exit19 when zero
     call choose_routine
-
-// Pointer table to code
-
-    //($C45C) rts
-    word: exitsub
-    word: game_engine_page_F96A
-    //spit dragon's fireball
-    word: game_engine_page_F991
-    //($C45C) rts
-    word: exitsub
-    word: game_engine_page_FA6B
-    word: game_engine_page_FA91
+        //($C45C) rts
+        word: exitsub
+        word: game_engine_page_F96A
+        //spit dragon's fireball
+        word: game_engine_page_F991
+        //($C45C) rts
+        word: exitsub
+        word: game_engine_page_FA6B
+        word: game_engine_page_FA91
 
 def exit19:
     return
@@ -12617,14 +12576,11 @@ def _028C:
 def game_engine_page_FC98:
     a = [0xb0:x]
     call choose_routine
-
-// Pointer table to code
-
-    //($C45C) rts
-    word: exitsub
-    word: game_engine_page_FCA5
-    word: game_engine_page_FCB1
-    word: game_engine_page_FCBA
+        //($C45C) rts
+        word: exitsub
+        word: game_engine_page_FCA5
+        word: game_engine_page_FCB1
+        word: game_engine_page_FCBA
 
 def game_engine_page_FCA5:
     call game_engine_page_FD84
@@ -12893,16 +12849,13 @@ def doonetile:
     //exit if tile not active
     goto _02A3 when zero
     call choose_routine
-
-// Pointer table to code
-
-    //($C45C) rts
-    word: exitsub
-    word: game_engine_page_FE3D
-    word: game_engine_page_FE54
-    word: game_engine_page_FE59
-    word: game_engine_page_FE54
-    word: game_engine_page_FE83
+        //($C45C) rts
+        word: exitsub
+        word: game_engine_page_FE3D
+        word: game_engine_page_FE54
+        word: game_engine_page_FE59
+        word: game_engine_page_FE54
+        word: game_engine_page_FE83
 
 def game_engine_page_FE3D:
     [tileroutine:x]++

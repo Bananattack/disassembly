@@ -1644,16 +1644,14 @@ def _000D:
 
     [pageindex] = x
     a = [objaction:x]
-    //($C27C)
     call choose_routine
-
-    word: game_engine_page_C45C
-    word: brinstar_page_8B9D
-    word: brinstar_page_8BD5
-    word: brinstar_page_8C01
-    word: brinstar_page_8C84
-    word: brinstar_page_8CC6
-    word: brinstar_page_8CF0
+        word: game_engine_page_C45C
+        word: brinstar_page_8B9D
+        word: brinstar_page_8BD5
+        word: brinstar_page_8C01
+        word: brinstar_page_8C84
+        word: brinstar_page_8CC6
+        word: brinstar_page_8CF0
 
 def brinstar_page_8B9D:
     [0x300:x]++
