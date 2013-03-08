@@ -3258,15 +3258,15 @@ def _0063:
     //Upper byte of PPU string.
     a = 0x21
     //($C36B)Write byte to PPU.
-    call writeppubyte
+    call write_ppu_byte
     //Lower byte of PPU string.
     a = 0xa8
     //($C36B)Write byte to PPU.
-    call writeppubyte
+    call write_ppu_byte
     //PPU string length.
     a = 0xf
     //($C36B)Write byte to PPU.
-    call writeppubyte
+    call write_ppu_byte
     a = [timer.time3]
     goto _0064 when zero
     a = 0x59
@@ -3287,7 +3287,7 @@ def _0065:
     y = 0x0
 def _0066:
     a = [[0x2]:y]
-    call writeppubyte
+    call write_ppu_byte
     y++
     compare y to 0xf
     goto _0066 when ~zero
@@ -3366,7 +3366,7 @@ def _006B:
     //the one selected by the player.
     y = 0x21
     //($9450)
-    call prepareerasetiles
+    call prepare_erase_tiles
     x = [passwordcursor]
     //Store the currently selected password character-->
     a = pop
@@ -3799,7 +3799,7 @@ def passwordtoscreen:
     //PPU high address byte.
     y = 0x21
     //($9450)Erase tiles on screen.
-    call prepareerasetiles
+    call prepare_erase_tiles
     //Index to find password characters(base=$699A).
     y = 0xb
     //($93F9)Load tiles on screen.
@@ -3809,7 +3809,7 @@ def passwordtoscreen:
     //PPU high address byte.
     y = 0x21
     //($9450)Erase tiles on screen.
-    call prepareerasetiles
+    call prepare_erase_tiles
     //Index to find password characters(base=$699A).
     y = 0x11
     //($93F9)Load tiles on screen.
@@ -3819,7 +3819,7 @@ def passwordtoscreen:
     //PPU high address byte.
     y = 0x21
     //($9450)Erase tiles on screen.
-    call prepareerasetiles
+    call prepare_erase_tiles
     //Index to find password characters(base=$699A).
     y = 0x17
     //($93F9)Load tiles on screen.
@@ -3829,7 +3829,7 @@ def passwordtoscreen:
     //PPU high address byte.
     y = 0x21
     //($9450)Erase tiles on screen.
-    goto prepareerasetiles
+    goto prepare_erase_tiles
 
 def loadpasswordtiles:
 
@@ -3914,7 +3914,7 @@ def prepare_ppu_process_: do
     goto process_ppu_string
 end
 
-def prepareerasetiles:
+def prepare_erase_tiles:
 
     //PPU low address byte
     [0x0] = x
@@ -3927,7 +3927,7 @@ def prepareerasetiles:
     //of tile to be erased is stored.
     [0x3] = y
     //($C328)Erase the selected tiles.
-    goto erasetile
+    goto erase_tile
 
 //---------------------------------------[ Unused intro routines ]------------------------------------
 

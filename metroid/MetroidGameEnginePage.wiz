@@ -230,7 +230,7 @@ task vblank do
         //($C1E0)Check if palette data pending.
         call check_pal_write
         //($C2CA)check if data needs to be written to PPU.
-        call checkppuwrite
+        call check_ppu_write
         //($C44D)Update $2000 & $2001.
         call write_ppu_registers
         //($C29A)Update h/v scroll reg.
@@ -688,33 +688,25 @@ end
 
 //-------------------------------------[ PPU writing routines ]---------------------------------------
 
-//Checks if any data is waiting to be written to the PPU.
-//RLE data is one tile that repeats several times in a row.  RLE-Repeat Last Entry
+// Checks if any data is waiting to be written to the PPU.
+func check_ppu_write do
+    //If we have PPU data to write, let's do something.
+    if a = [video.ppu_pending] is ~zero then
+        // Sets up PPU writer to start at address $07A1.
+        [0x0] = 0xA1 via a
+        [0x1] = 0x07 via a
+        // Write to PPU.
+        call process_ppu_string
 
-def checkppuwrite:
+        // PPU data string has been written so the data
+        // stored for the write is now erased.
+        [ppustrindex] = 0x0 via a
+        [ppudatastring] = a
+        [video.ppu_pending] = a
+    end
+end
 
-    a = [video.ppu_pending]
-    //If zero no PPU data to write, branch to exit.
-    goto _001D when zero
-    a = 0xa1
-    //Sets up PPU writer to start at address $07A1.
-    [0x0] = a
-    a = 0x7
-    //$0000 = ptr to PPU data string ($07A1).
-    [0x1] = a
-    //($C30C)write it to PPU.
-    call process_ppu_string
-    a = 0x0
-    //PPU data string has been written so the data-->
-    [ppustrindex] = a
-    //stored for the write is now erased.
-    [ppudatastring] = a
-    [video.ppu_pending] = a
-def _001D:
-    return
-
-def ppuwrite:
-
+def ppu_write: do
     //Set high PPU address.
     [nes.ppu.address] = a
     y++
@@ -722,79 +714,67 @@ def ppuwrite:
     //Set low PPU address.
     [nes.ppu.address] = a
     y++
-    //Get data byte containing rep length & RLE status.
-    a = [[0x0]:y]
-    //Carry Flag = PPU address increment (0 = 1, 1 = 32).
-    a = a << 1
-    //($C318)Update PPUCtrl0 according to Carry Flag.
-    call setppuinc
-    //Carry Flag = bit 6 of byte at ($00),y (1 = RLE).
-    a = a << 1
-    //Get data byte again.
-    a = [[0x0]:y]
-    //Keep lower 6 bits as loop counter.
-    a = a & 0x3f
-    x = a
-    //If Carry Flag not set, the data is not RLE.
-    goto ppuwriteloop when ~carry
-    //Data is RLE, advance to data byte.
-    y++
 
-def ppuwriteloop:
-
-    goto _001E when carry
-    //Only inc Y if data is not RLE.
-    y++
-def _001E:
-    //Get data byte.
+    // Get data byte.
     a = [[0x0]:y]
-    //Write to PPU.
-    [nes.ppu.data] = a
-    //Decrease loop counter.
-    x--
-    //Keep going until X=0.
-    goto ppuwriteloop when ~zero
+    // carry = bit 7, indicating PPU increment.
+    a = a << 1
+    call set_ppu_increment
+    // carry = bit 6, indicating compression (0 = uncompressed, 1 = RLE)
+    a = a << 1
+    // Keep lower 6 bits as loop counter.
+    x = [[0x0]:y] & 0x3f via a
+
+    // If carry is set, then the data is RLE,
+    // and then next byte is the data to repeat.
+    if is carry then
+        y++
+    end
+    loop
+        // If data is uncompressed, we need the next byte in the stream.
+        if is ~carry then
+            y++
+        end
+        // Copy byte to PPU.
+        [nes.ppu.data] = [[0x0]:y] via a
+        x--
+    until zero end
     y++
-    //($C2A8)Point to next data chunk.
+    // Point to next data chunk.
     call add_y_to_ptr_00
+    // fallthrough
+end
 
 //Write data string at ($00) to PPU.
-
-def process_ppu_string:
-
+def process_ppu_string: do
     //Reset PPU address flip/flop.
     x = [nes.ppu.status]
     y = 0x0
     a = [[0x0]:y]
     //If A is non-zero, PPU data string follows,-->
-    goto ppuwrite when ~zero
+    goto ppu_write when ~zero
     //($C29A)Otherwise we're done.
     goto update_scroll
+end
 
-//In: CF = desired PPU address increment (0 = 1, 1 = 32).
-//Out: PPU control #0 ($2000) updated accordingly.
-
-def setppuinc:
-
-    //Preserve A.
+// In: carry = desired PPU address increment (0 = 1, 1 = 32).
+// Out: PPU ctrl register updated accordingly.
+func set_ppu_increment do
     push a
-    a = [video.ctrl]
-    a = a | 0x4
-    //PPU increment = 32 only if Carry Flag set,-->
-    goto _001F when carry
-    //else PPU increment = 1.
-    a = a & 0xfb
-def _001F:
+    // Set PPU increment to 32.
+    a = [video.ctrl] | 0x4
+    // PPU increment = 1 if carry flag is not set.
+    if is ~carry then
+        a = a & 0xfb
+    end
     [nes.ppu.ctrl] = a
     [video.ctrl] = a
-    //Restore A.
     a = pop
-    return
+end
 
-//Erase blasted tile on nametable.  Each screen is 16 tiles across and 15 tiles down.
-def erasetile:
-
-def game_engine_page_C328:
+// Erase blasted tile on nametable. 
+// Each screen is 16 tiles across and 15 tiles down.
+def erase_tile:
     y = 0x1
     //data pending = YES.
     [video.ppu_pending] = y
@@ -809,67 +789,72 @@ def game_engine_page_C328:
     //# of tiles vertically.
     [0x4] = a
     x = [ppustrindex]
-def _0020:
-    a = [0x1]
-    //($C36B)write PPU high address to $07A1,PPUStrIndex.
-    call writeppubyte
-    a = [0x0]
-    //($C36B)write PPU low address to $07A1,PPUStrIndex.
-    call writeppubyte
-    //data length.
-    a = [0x5]
-    [0x6] = a
-    //($C36B)write PPU string length to $07A1,PPUStrIndex.
-    call writeppubyte
-def _0021:
-    y++
-    //Get new tile to replace old tile.
-    a = [[0x2]:y]
-    //($C36B)Write it to $07A1,PPUStrIndex, inc x.
-    call writeppubyte
-    [0x6]--
-    //Branch if more horizontal tiles to replace.
-    goto _0021 when ~zero
-    [ppustrindex] = x
-    [0x6] = y
-    y = 0x20
-    //($C2A8)Move to next name table line.
-    call add_y_to_ptr_00
-    //Store index to find next tile info.
-    y = [0x6]
-    [0x4]--
-    //Branch if more lines need to be changed on name table.
-    goto _0020 when ~zero
+    loop
+        a = [0x1]
+        //($C36B)write PPU high address to $07A1,PPUStrIndex.
+        call write_ppu_byte
+        a = [0x0]
+        //($C36B)write PPU low address to $07A1,PPUStrIndex.
+        call write_ppu_byte
+        //data length.
+        a = [0x5]
+        [0x6] = a
+        //($C36B)write PPU string length to $07A1,PPUStrIndex.
+        call write_ppu_byte
+        loop
+            y++
+            //Get new tile to replace old tile.
+            a = [[0x2]:y]
+            //($C36B)Write it to $07A1,PPUStrIndex, inc x.
+            call write_ppu_byte
+            [0x6]--
+            //Branch if more horizontal tiles to replace.
+        until zero end
+        [ppustrindex] = x
+        [0x6] = y
+        y = 0x20
+        //($C2A8)Move to next name table line.
+        call add_y_to_ptr_00
+        //Store index to find next tile info.
+        y = [0x6]
+        [0x4]--
+    // Keep going as long as more lines need to be changed on name table.
+    until zero end
     //($c376)Finish writing PPU string and exit.
-    call endppustring
+    call end_ppu_string
 
-def writeppubyte:
-
+def write_ppu_byte: do
     //Store data byte at end of PPUDataString.
     [ppudatastring:x] = a
+    // fallthrough
+end
 
-def nextppubyte:
-
+def next_ppu_byte: do
     //PPUDataString has increased in size by 1 byte.
     x++
     //PPU byte writer can only write a maximum of #$4F bytes
     compare x to 0x4f
     //If PPU string not full, branch to get more data.
-    goto _0022 when ~carry
+    goto end_ppu_byte when ~carry
     x = [ppustrindex]
+    // fallthrough
+end
 
-def endppustring:
-
+def end_ppu_string: do
     //If PPU string is already full, or all PPU bytes loaded,-->
     a = 0x0
     //add #$00 as last byte to the PPU byte string.
     [ppudatastring:x] = a
-    a = pop
-    //Remove last return address from stack and jump out of-->
-    a = pop
-def _0022:
+    //Remove last return address from stack and jump out of
     //PPU writing routines.
+    a = pop
+    a = pop
+    // fallthrough
+end
+
+def end_ppu_byte: do
     return
+end
 
 //The following routine is only used by the intro routine to load the sprite 
 //palette data for the twinkling stars. The following memory addresses are used:
@@ -892,11 +877,11 @@ def _0023:
     //High byte of staring address to write PPU data
     a = [0x1]
     //($C36B)Put data byte into PPUDataString.
-    call writeppubyte
+    call write_ppu_byte
     //Low byte of starting address to write PPU data.
     a = [0x0]
     //($C36B)Put data byte into PPUDataString.
-    call writeppubyte
+    call write_ppu_byte
     //A now contains next data byte to be put into the PPU string.
     a = [0x4]
     //($C3C6)Break control byte into two bytes.
@@ -920,7 +905,7 @@ def writepalettestringbyte:
 def _0024:
     a = [[0x2]:y]
     //($C36B)Put data byte into PPUDataString.
-    call writeppubyte
+    call write_ppu_byte
     //Temporarily store data index.
     [0x6] = y
     //PPU address increment = 1.
@@ -955,7 +940,7 @@ def _0026:
     //Is PPU string done loading (#$00)? If so exit,-->
     goto _0023 when ~zero
     //($C376)else branch to process PPU byte.
-    call endppustring
+    call end_ppu_string
 
 def separatecontrolbits:
 
@@ -968,7 +953,7 @@ def separatecontrolbits:
     //Extract counter bits and save them for use above.
     [0x5] = a
     //($C36E)
-    goto nextppubyte
+    goto next_ppu_byte
 
 //----------------------------------------[ Math routines ]-------------------------------------------
 
@@ -1049,7 +1034,6 @@ end
 //---------------------------[ NMI and PPU control routines ]--------------------------------
 
 // Wait for the NMI to end.
-
 func wait_vblank_complete do
     call pend_redraw
     // Wait for NMI to end before continuing.
@@ -8139,15 +8123,15 @@ def game_engine_page_E590:
     x = [ppustrindex]
     a = [0x3]
     //($C36B)Put data byte into PPUDataString.
-    call writeppubyte
+    call write_ppu_byte
     a = [0x2]
-    call writeppubyte
+    call write_ppu_byte
     a = [0x4]
     //($C3C6)
     call separatecontrolbits
 def _018A:
     a = [[0x0]:y]
-    call writeppubyte
+    call write_ppu_byte
     [0x6] = y
     //WRAM pointer increment = 1...
     y = 0x1
@@ -8163,7 +8147,7 @@ def _018B:
     [0x5]--
     goto _018A when ~zero
     [ppustrindex] = x
-    call endppustring
+    call end_ppu_string
 
 def table01:
 
@@ -8210,23 +8194,23 @@ def _018C:
     //Store high byte of starting address(attrib table).
     a = [0x3]
     //($C36B)Put data byte into PPUDataString.
-    call writeppubyte
+    call write_ppu_byte
     //Store low byte of starting address(attrib table).
     a = [0x2]
     //($C36B)Put data byte into PPUDataString.
-    call writeppubyte
+    call write_ppu_byte
     //Length of data to write(1 row of attrib data).
     a = 0x20
     [0x4] = a
     //($C36B)Write control byte. Horizontal write.
-    call writeppubyte
+    call write_ppu_byte
     //Reset index into data string.
     y = 0x0
 def _018D:
     //Get data byte.
     a = [[0x0]:y]
     //($C36B)Put data byte into PPUDataString.
-    call writeppubyte
+    call write_ppu_byte
     //Increment to next attrib data byte.
     y++
     [0x4]--
@@ -8235,7 +8219,7 @@ def _018D:
     //Store updated PPU string index.
     [ppustrindex] = x
     //($C376)Append end marker(#$00) and exit writing routines.
-    call endppustring
+    call end_ppu_string
 
 //----------------------------------------------------------------------------------------------------
 
@@ -12852,7 +12836,7 @@ def _02A6:
     a = [0x1]
     a = a & 0x2f
     [0x1] = a
-    call game_engine_page_C328
+    call erase_tile
     carry = 0
     return
 
