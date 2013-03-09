@@ -1216,21 +1216,23 @@ end
 def check_bank_switch:
     y = [switchpending]
     //Exit if zero(no bank switch issued). else Y contains bank#+1.
-    goto _0032 when zero
+    goto exit_bank_switch when zero
     //($C4E8)Perform bank switch.
     call perform_bank_switch
     //($C510)Initialize bank switch data.
     goto init_bank
 
-def perform_bank_switch:
+def perform_bank_switch: do
     //Reset(so that the bank switch won't be performed-->
     //every succeeding frame too).
     [switchpending] = 0 via a
-    //Y now contains the bank to switch to.
+    //Y now contains the bank to switch to ([switchpending] - 1)
     y--
     [currentbank] = y
+    // fallthrough
+end
 
-def switch_rom_bank:
+def switch_rom_bank: do
     //Bank to switch to is stored at location $00.
     [0x0] = y via a
     //Load upper two bits for Reg 3 (they should always be 0).
@@ -1238,9 +1240,11 @@ def switch_rom_bank:
     //bank to switch to.
     //Store any new bits set in 3 or 4(there should be none).
     [switchupperbits] = [switchupperbits] & 0x18 | [0x0] via a
+    // fallthrough
+end
 
 //Loads the lower memory page with the bank specified in A.
-def write_rom_bank:
+def write_rom_bank: do
     unroll 4 do
         [nes.mmc1.prg] = a
         a = a >> 1
@@ -1248,29 +1252,39 @@ def write_rom_bank:
     [nes.mmc1.prg] = a
     //Restore A with current bank number before exiting.
     a = [0x0]
-def _0032:
+    // fallthrough
+end
+
+def exit_bank_switch: do
     return
+end
 
 //Calls the proper routine according to the bank number in A.
-def init_bank:
+def init_bank: do
     //*2 For proper table offset below.
     y = a << 1 via a
     //Load appropriate subroutine address into $0A and $0B.
-    [0xa] = [init_bank_table:y] via a
-    [0xb] = [init_bank_table+1:y] via a
+    [0xa] = [table:y] via a
+    [0xb] = [table+1:y] via a
     //Jump to appropriate initialization routine.
     goto [0xa]
 
-def init_bank_table:
-    word: initbank0, initbank1, initbank2, initbank3, initbank4, initbank5, exit_sub, exit_sub, exit_sub
+def table: word:
+    init_bank_0,
+    init_bank_1,
+    init_bank_2,
+    init_bank_3,
+    init_bank_4,
+    init_bank_5,
+    exit_sub,
+    exit_sub,
+    exit_sub
+end
 
 //Title screen memory page.
-
-def initbank0:
-
-    y = 0x0
+def init_bank_0: do
     //Ensure game is not paused.
-    [gamepaused] = y
+    [gamepaused] = 0x00 via y
     //Y=1.
     y++
     //Game is at title routines.
@@ -1283,51 +1297,47 @@ def initbank0:
     call clear_both_nametables
 
     y = 0xa0
-def _0033:
-    a = [0x98bf:y]
-    //Loads sprite info for stars into RAM $6E00 thru 6E9F.
-    [0x6dff:y] = a
-    y--
-    goto _0033 when ~zero
+    loop
+        //Loads sprite info for stars into RAM $6E00 thru 6E9F.
+        [0x6dff:y] = [0x98bf:y] via a
+        y--
+    until zero end
 
     //($C5D7)Load title GFX.
-    call inittitlegfx
+    call init_title_gfx
     //($C487)Turn on VBlank interrupts.
     goto enable_vblank
+end
 
 //Brinstar memory page.
-
-def initbank1:
-
-    a = 0x0
+def init_bank_1: do
     //GameMode = play.
-    [gamemode] = a
+    [gamemode] = 0x00 via a
     //($C45D)Disable screen and Vblank.
     call disable_screen_and_vblank
     a = [mainroutine]
-    //Is game engine running? if so, branch.-->
-    compare a to 0x3
-    //Else do some housekeeping first.
-    goto _0034 when zero
-    a = 0x0
-    //Run InitArea routine next.
-    [mainroutine] = a
-    //Start in Brinstar.
-    [inarea] = a
-    //Make sure game is not paused.
-    [gamepaused] = a
-    //($C1D4)Clear game engine memory addresses.
-    call clear_game_engine_ram
-    //($C578)Clear Samus' stats memory addresses.
-    call clear_samus_ram
-def _0034:
+    //If the game engine isn't running, do some housekeeping first.
+    if compare a to 0x3 is ~= then
+        a = 0x0
+        //Run InitArea routine next.
+        [mainroutine] = a
+        //Start in Brinstar.
+        [inarea] = a
+        //Make sure game is not paused.
+        [gamepaused] = a
+        //($C1D4)Clear game engine memory addresses.
+        call clear_game_engine_ram
+        //($C578)Clear Samus' stats memory addresses.
+        call clear_samus_ram
+    end
     y = 0x0
     //($C4EF)Load Brinstar memory page into lower 16Kb memory.
     call switch_rom_bank
     //($C604)Load Brinstar GFX.
-    call initbrinstargfx
+    call init_brinstar_gfx
     //($C487)Turn on VBlank interrupts.
     goto enable_vblank
+end
 
 func clear_samus_ram do
     //Clears Samus stats(Health, full tanks, game timer, etc.).
@@ -1342,322 +1352,300 @@ func clear_samus_ram do
 end
 
 //Norfair memory page.
-
-def initbank2:
-
+def init_bank_2: do
     //GameMode = play.
-    a = 0x0
-    [gamemode] = a
+    [gamemode] = 0x0 via a
     //($C45D)Disable screen and Vblank.
     call disable_screen_and_vblank
     //($C622)Load Norfair GFX.
-    call initnorfairgfx
+    call init_norfair_gfx
     //($C487)Turn on VBlank interrupts.
     goto enable_vblank
+end
 
 //Tourian memory page.
-
-def initbank3:
-
+def init_bank_3: do
     //GameMode = play.
-    a = 0x0
-    [gamemode] = a
+    [gamemode] = 0x0 via a
     //($C45D)Disable screen and Vblank.
     call disable_screen_and_vblank
     y = 0xd
-def _0036:
-    //Load info from table below into-->
-    a = [metroiddata:y]
-    //$77F0 thru $77FD.
-    [0x77f0:y] = a
-    y--
-    goto _0036 when ~negative
+    loop
+        //Load info from table below into
+        //$77F0 thru $77FD.
+        [0x77f0:y] = [metroid_data:y] via a
+        y--
+    until negative end
     //($C645)Load Tourian GFX.
-    call inittouriangfx
+    call init_tourian_gfx
     //($C487)Turn on VBlank interrupts.
     goto enable_vblank
 
 //Table used by above subroutine and loads the initial data used to describe
 //metroid's behavior in the Tourian section of the game.
-
-def metroiddata:
-
+def metroid_data:
     byte: 0xf8, 0x8, 0x30, 0xd0, 0x60, 0xa0, 0x2, 0x4, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0
+end
 
 //Kraid memory page.
-
-def initbank4:
-
+def init_bank_4: do
     //GameMode = play.
-    a = 0x0
-    [gamemode] = a
+    [gamemode] = 0x0 via a
     //($C45D)Disable screen and Vblank.
     call disable_screen_and_vblank
     //($C677)Load Kraid GFX.
-    call initkraidgfx
+    call init_kraid_gfx
     //($C487)Turn on VBlank interrupts.
     goto enable_vblank
+end
 
 //Ridley memory page.
-
-def initbank5:
-
+def init_bank_5: do
     //GameMode = play.
-    a = 0x0
-    [gamemode] = a
+    [gamemode] = 0x0 via a
     //($C45D)Disable screen and Vblank.
     call disable_screen_and_vblank
     //($C69F)Loag Ridley GFX.
-    call initridleygfx
+    call init_ridley_gfx
     //($C487)Turn on VBlank interrupts.
     goto enable_vblank
+end
 
-def initendgfx:
-
-    a = 0x1
+def init_end_gfx:
     //Game is at title/end game.
-    [gamemode] = a
+    [gamemode] = 0x1 via a
     //($C6C2)Load end game GFX.
-    goto initgfx6
+    goto init_gfx_6
 
-def inittitlegfx:
-
+def init_title_gfx:
     //Entry 21 in GFXInfo table.
     y = 0x15
     //($C7AB)Load pattern table GFX.
-    call loadgfx
+    call load_gfx
 
-def loadsamusgfx:
-
+def load_samus_gfx:
     //Entry 0 in GFXInfo table.
     y = 0x0
     //($C7AB)Load pattern table GFX.
-    call loadgfx
+    call load_gfx
     a = [justinbailey]
     //Branch if wearing suit
     goto _0037 when zero
     //Entry 27 in GFXInfo table.
     y = 0x1b
     //($C7AB)Switch to girl gfx
-    call loadgfx
+    call load_gfx
 def _0037:
     //Entry 20 in GFXInfo table.
     y = 0x14
     //($C7AB)Load pattern table GFX.
-    call loadgfx
+    call load_gfx
     //Entry 23 in GFXInfo table.
     y = 0x17
     //($C7AB)Load pattern table GFX.
-    call loadgfx
+    call load_gfx
     //Entry 24 in GFXInfo table.
     y = 0x18
     //($C7AB)Load pattern table GFX.
-    call loadgfx
+    call load_gfx
     //Entry 25 in GFXInfo table.
     y = 0x19
     //($C7AB)Load pattern table GFX.
-    call loadgfx
+    call load_gfx
     //Entry 22 in GFXInfo table.
     y = 0x16
     //($C7AB)Load pattern table GFX.
-    goto loadgfx
+    goto load_gfx
 
-def initbrinstargfx:
-
+def init_brinstar_gfx:
     //Entry 3 in GFXInfo table.
     y = 0x3
     //($C7AB)Load pattern table GFX.
-    call loadgfx
+    call load_gfx
     //Entry 4 in GFXInfo table.
     y = 0x4
     //($C7AB)Load pattern table GFX.
-    call loadgfx
+    call load_gfx
     //Entry 5 in GFXInfo table.
     y = 0x5
     //($C7AB)Load pattern table GFX.
-    call loadgfx
+    call load_gfx
     //Entry 6 in GFXInfo table.
     y = 0x6
     //($C7AB)Load pattern table GFX.
-    call loadgfx
+    call load_gfx
     //Entry 25 in GFXInfo table.
     y = 0x19
     //($C7AB)Load pattern table GFX.
-    call loadgfx
+    call load_gfx
     //Entry 22 in GFXInfo table.
     y = 0x16
     //($C7AB)Load pattern table GFX.
-    goto loadgfx
+    goto load_gfx
 
-def initnorfairgfx:
-
+def init_norfair_gfx:
     //Entry 4 in GFXInfo table.
     y = 0x4
     //($C7AB)Load pattern table GFX.
-    call loadgfx
+    call load_gfx
     //Entry 5 in GFXInfo table.
     y = 0x5
     //($C7AB)Load pattern table GFX.
-    call loadgfx
+    call load_gfx
     //Entry 7 in GFXInfo table.
     y = 0x7
     //($C7AB)Load pattern table GFX.
-    call loadgfx
+    call load_gfx
     //Entry 8 in GFXInfo table.
     y = 0x8
     //($C7AB)Load pattern table GFX.
-    call loadgfx
+    call load_gfx
     //Entry 9 in GFXInfo table.
     y = 0x9
     //($C7AB)Load pattern table GFX.
-    call loadgfx
+    call load_gfx
     //Entry 25 in GFXInfo table.
     y = 0x19
     //($C7AB)Load pattern table GFX.
-    call loadgfx
+    call load_gfx
     //Entry 22 in GFXInfo table.
     y = 0x16
     //($C7AB)Load pattern table GFX.
-    goto loadgfx
+    goto load_gfx
 
-def inittouriangfx:
-
+def init_tourian_gfx:
     //Entry 5 in GFXInfo table.
     y = 0x5
     //($C7AB)Load pattern table GFX.
-    call loadgfx
+    call load_gfx
     //Entry 10 in GFXInfo table.
     y = 0xa
     //($C7AB)Load pattern table GFX.
-    call loadgfx
+    call load_gfx
     //Entry 11 in GFXInfo table.
     y = 0xb
     //($C7AB)Load pattern table GFX.
-    call loadgfx
+    call load_gfx
     //Entry 12 in GFXInfo table.
     y = 0xc
     //($C7AB)Load pattern table GFX.
-    call loadgfx
+    call load_gfx
     //Entry 13 in GFXInfo table.
     y = 0xd
     //($C7AB)Load pattern table GFX.
-    call loadgfx
+    call load_gfx
     //Entry 14 in GFXInfo table.
     y = 0xe
     //($C7AB)Load pattern table GFX.
-    call loadgfx
+    call load_gfx
     //Entry 26 in GFXInfo table.
     y = 0x1a
     //($C7AB)Load pattern table GFX.
-    call loadgfx
+    call load_gfx
     //Entry 28 in GFXInfo table.
     y = 0x1c
     //($C7AB)Load pattern table GFX.
-    call loadgfx
+    call load_gfx
     //Entry 25 in GFXInfo table.
     y = 0x19
     //($C7AB)Load pattern table GFX.
-    call loadgfx
+    call load_gfx
     //Entry 22 in GFXInfo table.
     y = 0x16
     //($C7AB)Load pattern table GFX.
-    goto loadgfx
+    goto load_gfx
 
-def initkraidgfx:
-
+def init_kraid_gfx:
     //Entry 4 in GFXInfo table.
     y = 0x4
     //($C7AB)Load pattern table GFX.
-    call loadgfx
+    call load_gfx
     //Entry 5 in GFXInfo table.
     y = 0x5
     //($C7AB)Load pattern table GFX.
-    call loadgfx
+    call load_gfx
     //Entry 10 in GFXInfo table.
     y = 0xa
     //($C7AB)Load pattern table GFX.
-    call loadgfx
+    call load_gfx
     //Entry 15 in GFXInfo table.
     y = 0xf
     //($C7AB)Load pattern table GFX.
-    call loadgfx
+    call load_gfx
     //Entry 16 in GFXInfo table.
     y = 0x10
     //($C7AB)Load pattern table GFX.
-    call loadgfx
+    call load_gfx
     //Entry 17 in GFXInfo table.
     y = 0x11
     //($C7AB)Load pattern table GFX.
-    call loadgfx
+    call load_gfx
     //Entry 25 in GFXInfo table.
     y = 0x19
     //($C7AB)Load pattern table GFX.
-    call loadgfx
+    call load_gfx
     //Entry 22 in GFXInfo table.
     y = 0x16
     //($C7AB)Load pattern table GFX.
-    goto loadgfx
+    goto load_gfx
 
-def initridleygfx:
-
+def init_ridley_gfx:
     //Entry 4 in GFXInfo table.
     y = 0x4
     //($C7AB)Load pattern table GFX.
-    call loadgfx
+    call load_gfx
     //Entry 5 in GFXInfo table.
     y = 0x5
     //($C7AB)Load pattern table GFX.
-    call loadgfx
+    call load_gfx
     //Entry 10 in GFXInfo table.
     y = 0xa
     //($C7AB)Load pattern table GFX.
-    call loadgfx
+    call load_gfx
     //Entry 18 in GFXInfo table.
     y = 0x12
     //($C7AB)Load pattern table GFX.
-    call loadgfx
+    call load_gfx
     //Entry 19 in GFXInfo table.
     y = 0x13
     //($C7AB)Load pattern table GFX.
-    call loadgfx
+    call load_gfx
     //Entry 25 in GFXInfo table.
     y = 0x19
     //($C7AB)Load pattern table GFX.
-    call loadgfx
+    call load_gfx
     //Entry 22 in GFXInfo table.
     y = 0x16
     //($C7AB)Load pattern table GFX.
-    goto loadgfx
+    goto load_gfx
 
-def initgfx6:
-
+def init_gfx_6:
     //Entry 1 in GFXInfo table.
     y = 0x1
     //($C7AB)Load pattern table GFX.
-    call loadgfx
+    call load_gfx
     //Entry 2 in GFXInfo table.
     y = 0x2
     //($C7AB)Load pattern table GFX.
-    call loadgfx
+    call load_gfx
     //Entry 25 in GFXInfo table.
     y = 0x19
     //($C7AB)Load pattern table GFX.
-    call loadgfx
+    call load_gfx
     //Entry 22 in GFXInfo table.
     y = 0x16
     //($C7AB)Load pattern table GFX.
-    goto loadgfx
+    goto load_gfx
 
-def initgfx7:
-
+def init_gfx_7:
     //Entry 23 in GFXInfo table.
     y = 0x17
     //($C7AB)Load pattern table GFX.
-    call loadgfx
+    call load_gfx
     //Entry 22 in GFXInfo table.
     y = 0x16
     //($C7AB)Load pattern table GFX.
-    goto loadgfx
+    goto load_gfx
 
 //The table below contains info for each tile data block in the ROM.
 //Each entry is 7 bytes long. The format is as follows:
@@ -1760,28 +1748,26 @@ def gfxinfo:
 
 //Y contains the GFX header to fetch from the table above, GFXInfo.
 
-def loadgfx:
-
+def load_gfx: do
     a = 0xff
-def _0038:
-    //Every time y decrements, the entry into the table-->
-    carry = 0
-    //is increased by 7.  When y is less than 0, A points-->
-    a = a +# 0x7
-    //to the last byte of the entry in the table.
-    y--
-    goto _0038 when ~negative
+    loop
+        //Every time y decrements, the entry into the table-->
+        //is increased by 7.  When y is less than 0, A points-->
+        a = a + 0x7
+        //to the last byte of the entry in the table.
+        y--
+    until negative end
     //Transfer offset into table to Y.
     y = a
 
     x = 0x6
-def _0039:
-    a = [gfxinfo:y]
-    //Copy entries from GFXInfo to $00-$06.
-    [0x0:x] = a
-    y--
-    x--
-    goto _0039 when ~negative
+    loop
+        a = [gfxinfo:y]
+        //Copy entries from GFXInfo to $00-$06.
+        [0x0:x] = a
+        y--
+        x--
+    until negative end
 
     //ROM bank containing the GFX data.
     y = [0x0]
@@ -1797,6 +1783,7 @@ def _0039:
     y = [currentbank]
     //($C4FE)Switch back to the "old" bank.
     goto switch_rom_bank
+end
 
 //Writes tile data from ROM to VRAM, according to the gfx header data
 //contained in $00-$06.

@@ -3217,7 +3217,7 @@ def loadpasswordscreen:
     //($9449)Load "PASSWORD PLEASE" on screen.
     call prepare_ppu_process_
     //($C6D6)Loads the font for the password.
-    call initgfx7
+    call init_gfx_7
     //($940B)Write password character to screen.
     call displayinputcharacters
     a = 0x13
@@ -3616,7 +3616,7 @@ def _007E:
     //($C45D)Turn off screen.
     call disable_screen_and_vblank
     //($C5DC)Load Samus GFX into pattern table.
-    call loadsamusgfx
+    call load_samus_gfx
     //($C487)Turn on the non-maskable interrupt.
     call enable_vblank
     //Load area Samus is to start in.
@@ -3687,7 +3687,7 @@ def displaypassword:
     //($9449)Clears screen and writes "PASS WORD".
     call prepare_ppu_process_
     //($C6D6)Loads the font for the password.
-    call initgfx7
+    call init_gfx_7
     //($8C7A)Calculates the password.
     call calculatepassword
     //($C487)Turn on the nonmaskable interrupt.
@@ -3759,7 +3759,7 @@ def gameover:
     //($9449)Clears screen and writes "GAME OVER".
     call prepare_ppu_process_
     //($C6D6)Loads the font for the password.
-    call initgfx7
+    call init_gfx_7
     //($C487)Turn on the nonmaskable interrupt.
     call enable_vblank
     //Load timer.time3 with a delay of 160 frames-->
@@ -5035,7 +5035,7 @@ def loadendgfx:
     //($909F)Turn off screen, erase sprites and nametables.
     call clearall
     //($C5D0)Prepare to load end GFX.
-    call initendgfx
+    call init_end_gfx
     a = 0x4
     //Checks if game was played as suitless-->
     y = [justinbailey]
